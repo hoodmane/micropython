@@ -37,17 +37,18 @@ OBJ += $(addprefix $(BUILD)/, $(SRC_SHARED:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(SRC_C:.c=.o))
 
 JSFLAGS += -s ASYNCIFY
-JSFLAGS += -s EXPORTED_FUNCTIONS="['_mp_js_init', '_mp_js_init_repl', '_mp_js_do_str', '_mp_js_process_char', '_mp_hal_get_interrupt_char', '_mp_sched_keyboard_interrupt']"
-JSFLAGS += -s EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap', 'FS']"
+JSFLAGS += -s EXPORTED_FUNCTIONS="['_mp_js_init', '_mp_js_init_repl', '_mp_js_do_str', '_mp_js_process_char', '_mp_hal_get_interrupt_char', '_mp_sched_keyboard_interrupt', '_free']"
+JSFLAGS += -s EXPORTED_RUNTIME_METHODS="['stringToNewUTF8', 'FS']"
 JSFLAGS += -s --memory-init-file 0
 JSFLAGS += --js-library library.js
+JSFLAGS += -s MODULARIZE -s EXPORT_NAME=_createMicropythonModule
 
 all: $(BUILD)/micropython.js
 
-$(BUILD)/micropython.js: $(OBJ) library.js wrapper.js
-	$(ECHO) "LINK $(BUILD)/firmware.js"
-	$(Q)emcc $(LDFLAGS) -o $(BUILD)/firmware.js $(OBJ) $(JSFLAGS)
-	cat wrapper.js $(BUILD)/firmware.js > $@
+$(BUILD)/micropython.js: $(OBJ) library.js loadmicropython.js
+	$(ECHO) "LINK $(BUILD)/micropython.js"
+	$(Q)emcc $(LDFLAGS) -o $(BUILD)/micropython.js $(OBJ) $(JSFLAGS)
+	cat loadmicropython.js >> $@
 
 min: $(BUILD)/micropython.js
 	uglifyjs $< -c -o $(BUILD)/micropython.min.js

@@ -24,7 +24,20 @@
  * THE SOFTWARE.
  */
 
-#include "py/obj.h"
-
-extern int mp_js_ticks_ms(void);
-extern void mp_js_hook(void);
+async function loadMicroPython(options) {
+    const {heapsize} = Object.assign({heapsize: 64 *1024},  options);
+    const Module = {};
+    const moduleLoaded = new Promise((r) => (Module.postRun = r));
+    _createMicropythonModule(Module);
+    await moduleLoaded;
+    Module._mp_js_init(heapsize);
+    return {
+        _module: Module,
+        FS : Module.FS,
+        runPython(code) {
+            const ptr = Module.stringToNewUTF8(code);
+            Module._mp_js_do_str(ptr);
+            Module._free(ptr);
+        }
+    };
+}

@@ -25,16 +25,7 @@
  */
 
 mergeInto(LibraryManager.library, {
-    mp_js_write: function(ptr, len) {
-        const buffer = HEAPU8.subarray(ptr, ptr + len)
-        if (typeof window === 'undefined') {
-            process.stdout.write(buffer);
-        } else {
-            const printEvent = new CustomEvent('micropython-print', { detail: buffer });
-            document.dispatchEvent(printEvent);
-        }
-    },
-
+    mp_js_ticks_ms__postset: "var MP_JS_EPOCH = Date.now()",
     mp_js_ticks_ms: function() {
         return Date.now() - MP_JS_EPOCH;
     },
