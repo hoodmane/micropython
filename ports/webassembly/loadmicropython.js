@@ -27,6 +27,7 @@
 async function loadMicroPython(options) {
     const {heapsize} = Object.assign({heapsize: 64 *1024},  options);
     const Module = {};
+    Module.handle_js_error = (e) => {throw e};
     const moduleLoaded = new Promise((r) => (Module.postRun = r));
     _createMicropythonModule(Module);
     await moduleLoaded;

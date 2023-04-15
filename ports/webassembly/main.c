@@ -82,6 +82,14 @@ int mp_js_process_char(int c) {
     return pyexec_event_repl_process_char(c);
 }
 
+EMSCRIPTEN_KEEPALIVE void print_an_obj(mp_obj_t obj) {
+    mp_obj_print(obj, PRINT_REPR);
+    printf("\n");
+}
+
+int hiwire_init(void);
+int js2python_init(void);
+
 void mp_js_init(int heap_size) {
     #if MICROPY_ENABLE_GC
     char *heap = (char *)malloc(heap_size * sizeof(char));
@@ -92,7 +100,8 @@ void mp_js_init(int heap_size) {
     static mp_obj_t pystack[1024];
     mp_pystack_init(pystack, &pystack[MP_ARRAY_SIZE(pystack)]);
     #endif
-
+    hiwire_init();
+    js2python_init();
     mp_init();
 
     #if MICROPY_VFS_POSIX
