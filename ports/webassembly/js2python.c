@@ -42,7 +42,7 @@ EM_JS_REF(mp_obj_t, js2python_immutable, (JsRef id), {
   return 0;
 });
 
-EM_JS_REF(mp_obj_t, js2python, (JsRef id), {
+EM_JS_REF(mp_obj_t, js2python_js, (JsRef id), {
   let value = Hiwire.get_value(id);
   let result = Module.js2python_convertImmutable(value, id);
   // clang-format off
@@ -52,6 +52,11 @@ EM_JS_REF(mp_obj_t, js2python, (JsRef id), {
   }
   return _JsProxy_create(id);
 })
+
+mp_obj_t
+js2python(JsRef id) {
+  return js2python_js(id);
+}
 
 // clang-format on
 

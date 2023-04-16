@@ -39,6 +39,13 @@ async function loadMicroPython(options) {
             const ptr = Module.stringToNewUTF8(code);
             Module._mp_js_do_str(ptr);
             Module._free(ptr);
+        },
+        pyimport(name) {
+            const nameid = Module.hiwire.new_value(name);
+            const proxy_id = Module._pyimport(nameid);
+            Module.hiwire.decref(nameid);
+            Module.api.throw_if_error();
+            return Module.hiwire.pop_value(proxy_id);
         }
     };
 }

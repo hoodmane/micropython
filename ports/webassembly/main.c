@@ -41,6 +41,23 @@
 
 #include "emscripten.h"
 #include "library.h"
+#include "pyproxy.h"
+#include "js2python.h"
+
+
+EMSCRIPTEN_KEEPALIVE JsRef
+pyimport(JsRef name) {
+    nlr_buf_t nlr;
+    if (nlr_push(&nlr) == 0) {
+        mp_obj_t pyname = js2python(name);
+        mp_obj_t result = mp_builtin___import__(1, &pyname);
+        return pyproxy_new(result);
+    } else {
+        record_traceback(nlr.ret_val);
+        return NULL;
+    }
+}
+    
 
 #if MICROPY_ENABLE_COMPILER
 int do_str(const char *src, mp_parse_input_kind_t input_kind) {
@@ -89,6 +106,7 @@ EMSCRIPTEN_KEEPALIVE void print_an_obj(mp_obj_t obj) {
 
 int hiwire_init(void);
 int js2python_init(void);
+int pyproxy_init(void);
 
 void mp_js_init(int heap_size) {
     #if MICROPY_ENABLE_GC
@@ -102,6 +120,7 @@ void mp_js_init(int heap_size) {
     #endif
     hiwire_init();
     js2python_init();
+    pyproxy_init();
     mp_init();
 
     #if MICROPY_VFS_POSIX

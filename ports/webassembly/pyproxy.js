@@ -35,9 +35,7 @@ JS_FILE(pyproxy_init_js, () => {
     } finally {
       Hiwire.decref(idargs);
     }
-    if (idresult === 0) {
-      Module._pythonexc2js();
-    }
+    throw_if_error();
     let result = Hiwire.pop_value(idresult);
     // Automatically schedule coroutines
     if (result && result.type === "coroutine" && result._ensure_future) {
@@ -93,9 +91,7 @@ JS_FILE(pyproxy_init_js, () => {
       } catch (e) {
         API.fatal_error(e);
       }
-      if (jsref_repr === 0) {
-        Module._pythonexc2js();
-      }
+      throw_if_error();
       return Hiwire.pop_value(jsref_repr);
     }
     /**
@@ -150,6 +146,23 @@ JS_FILE(pyproxy_init_js, () => {
       }.apply(undefined, jsargs);
       return Module.callPyObject(_getPtr(this), jsargs);
     }
+
+    callKwargs(...jsargs) {
+      if (jsargs.length === 0) {
+        throw new TypeError(
+          "callKwargs requires at least one argument (the key word argument object)",
+        );
+      }
+      let kwargs = jsargs.pop();
+      if (
+        kwargs.constructor !== undefined &&
+        kwargs.constructor.name !== "Object"
+      ) {
+        throw new TypeError("kwargs argument is not an object");
+      }
+      return Module.callPyObjectKwargs(_getPtr(this), jsargs, kwargs);
+    }
+
   }
 
   /**
@@ -368,11 +381,7 @@ JS_FILE(pyproxy_init_js, () => {
     } finally {
       Hiwire.decref(idkey);
     }
-    // if (idresult === 0) {
-    //   if (Module._PyErr_Occurred()) {
-    //     Module._pythonexc2js();
-    //   }
-    // }
+    throw_if_error();
     return idresult;
   }
 

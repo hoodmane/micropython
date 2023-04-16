@@ -34,6 +34,8 @@ SRC_C = \
 	hiwire.c \
 	js2python.c \
 	python2js.c \
+	pyproxy.c \
+	error_handling.c \
 
 SRC_QSTR += $(SRC_C) $(SRC_SHARED)
 
@@ -61,11 +63,11 @@ JSFLAGS += -s EXPORTED_RUNTIME_METHODS="['stringToNewUTF8', 'FS']"
 JSFLAGS += -s --memory-init-file 0
 JSFLAGS += --js-library library.js
 JSFLAGS += -s MODULARIZE -s EXPORT_NAME=_createMicropythonModule
-JSFLAGS += --pre-js pre.js
+JSFLAGS += --pre-js pre.js --pre-js error_handling.js
 
 all: $(BUILD)/micropython.js
 
-$(BUILD)/micropython.js: $(OBJ) library.js loadmicropython.js
+$(BUILD)/micropython.js: $(OBJ) library.js loadmicropython.js pre.js error_handling.js
 	echo $(OBJ)
 	$(ECHO) "LINK $(BUILD)/micropython.js"
 	$(Q)emcc $(LDFLAGS) -o $(BUILD)/micropython.js $(OBJ) $(JSFLAGS)

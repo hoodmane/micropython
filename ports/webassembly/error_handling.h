@@ -6,6 +6,7 @@
 
 typedef int errcode;
 #include "hiwire.h"
+#include "py/runtime.h"
 #define likely(x) __builtin_expect((x), 1)
 #define unlikely(x) __builtin_expect((x), 0)
 
@@ -34,7 +35,7 @@ wrap_exception();
  * an appropriate message to the console and throw the error.
  */
 void
-pythonexc2js();
+record_traceback(mp_obj_t obj);
 
 // Used by LOG_EM_JS_ERROR (behind DEBUG_F flag)
 void
@@ -91,7 +92,7 @@ console_error_obj(JsRef obj);
   EM_JS(ret, func_name, args, body)
 
 #define EM_JS_REF(ret, func_name, args, body...)                               \
-  EM_JS_DEFER(ret WARN_UNUSED, func_name, args, {                              \
+  EM_JS_DEFER(ret, func_name, args, {                              \
     try    /* intentionally no braces, body already has them */                \
       body /* <== body of func */                                              \
     catch (e) {                                                                \
@@ -105,7 +106,7 @@ console_error_obj(JsRef obj);
   })
 
 #define EM_JS_NUM(ret, func_name, args, body...)                               \
-  EM_JS_DEFER(ret WARN_UNUSED, func_name, args, {                              \
+  EM_JS_DEFER(ret, func_name, args, {                              \
     try    /* intentionally no braces, body already has them */                \
       body /* <== body of func */                                              \
     catch (e) {                                                                \
@@ -118,7 +119,7 @@ console_error_obj(JsRef obj);
 
 // If there is a Js error, catch it and return false.
 #define EM_JS_BOOL(ret, func_name, args, body...)                              \
-  EM_JS_DEFER(ret WARN_UNUSED, func_name, args, {                              \
+  EM_JS_DEFER(ret, func_name, args, {                              \
     try    /* intentionally no braces, body already has them */                \
       body /* <== body of func */                                              \
     catch (e) {                                                                \

@@ -1,5 +1,6 @@
 #ifndef PYPROXY_H
 #define PYPROXY_H
+#include "hiwire.h"
 
 /**
  * Makes Python objects usable from JavaScript.

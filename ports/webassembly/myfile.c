@@ -1,14 +1,15 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "hiwire.h"
 #include "py/runtime.h"
 #include "py/binary.h"
 #include "py/mperrno.h"
 #include "py/objint.h"
 #include "py/gc.h"
-#include "python2js.h"
 
+#include "hiwire.h"
+#include "python2js.h"
+#include "pyproxy.h"
 
 
 // STATIC const mp_obj_type_t my_type;
@@ -73,6 +74,12 @@ STATIC mp_obj_t to_js(mp_obj_t obj) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(to_js_obj, to_js);
 
 
+STATIC mp_obj_t pyproxy(mp_obj_t obj) {
+    JsRef x = pyproxy_new(obj);
+    return mp_obj_new_int((int)x);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(pyproxy_obj, pyproxy);
+
 
 STATIC const mp_rom_map_elem_t mp_module_mytestmodule_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_mytestmodule) },
@@ -80,6 +87,7 @@ STATIC const mp_rom_map_elem_t mp_module_mytestmodule_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_jsproxy_create), MP_ROM_PTR(&jsproxy_create_obj) },
     { MP_ROM_QSTR(MP_QSTR_global), MP_ROM_PTR(&jsproxy_create_global_obj) },
     { MP_ROM_QSTR(MP_QSTR_to_js), MP_ROM_PTR(&to_js_obj) },
+    { MP_ROM_QSTR(MP_QSTR_pyproxy), MP_ROM_PTR(&pyproxy_obj) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(mp_module_mytestmodule_globals, mp_module_mytestmodule_globals_table);

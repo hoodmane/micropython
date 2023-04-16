@@ -9,6 +9,7 @@
 #include "pyproxy.h"
 #include "python2js.h"
 
+#include "py/builtin.h"
 #include "py/runtime.h"
 
 #define IS_CALLABLE 1
@@ -141,35 +142,51 @@ _pyproxy_hasattr(mp_obj_t pyobj, JsRef jsattr)
 EMSCRIPTEN_KEEPALIVE JsRef
 _pyproxy_getattr(mp_obj_t pyobj, JsRef idkey, JsRef proxyCache)
 {
-  mp_obj_t pykey = js2python(idkey);
-  // If it's a method, we use the descriptor pointer as the cache key rather
-  // than the actual bound method. This allows us to reuse bound methods from
-  // the cache.
-  // _PyObject_GetMethod will return true and store a descriptor into pydescr if
-  // the attribute we are looking up is a method, otherwise it will return false
-  // and set pydescr to the actual attribute (in particular, I believe that it
-  // will resolve other types of getter descriptors automatically).
-  mp_obj_t pyresult = mp_load_attr(pyobj, mp_obj_str_get_qstr(pykey));
-  return python2js(pyresult);
+  nlr_buf_t nlr;
+  if (nlr_push(&nlr) == 0) {
+    mp_obj_t pykey = js2python(idkey);
+    // If it's a method, we use the descriptor pointer as the cache key rather
+    // than the actual bound method. This allows us to reuse bound methods from
+    // the cache.
+    // _PyObject_GetMethod will return true and store a descriptor into pydescr if
+    // the attribute we are looking up is a method, otherwise it will return false
+    // and set pydescr to the actual attribute (in particular, I believe that it
+    // will resolve other types of getter descriptors automatically).
+    mp_obj_t pyresult = mp_load_attr(pyobj, mp_obj_str_get_qstr(pykey));
+    return python2js(pyresult);
+  } else {
+    record_traceback(nlr.ret_val);
+    return NULL;
+  }
 }
 
 
 EMSCRIPTEN_KEEPALIVE int
 _pyproxy_setattr(mp_obj_t pyobj, JsRef jsattr, JsRef jsval)
 {
-  mp_obj_t pyattr = js2python(jsattr);
-  mp_obj_t pyval = js2python(jsval);
+  nlr_buf_t nlr;
+  if (nlr_push(&nlr) == 0) {
+    mp_obj_t pyattr = js2python(jsattr);
+    mp_obj_t pyval = js2python(jsval);
 
-  mp_store_attr(pyobj, mp_obj_str_get_qstr(pyattr), pyval);
+    mp_store_attr(pyobj, mp_obj_str_get_qstr(pyattr), pyval);
+  } else {
+    record_traceback(nlr.ret_val);
+  }
   return 0;
 }
 
 EMSCRIPTEN_KEEPALIVE int
 _pyproxy_delattr(mp_obj_t pyobj, JsRef jsattr)
 {
-  mp_obj_t pyattr = js2python(jsattr);
+  nlr_buf_t nlr;
+  if (nlr_push(&nlr) == 0) {
+    mp_obj_t pyattr = js2python(jsattr);
 
-  mp_store_attr(pyobj, mp_obj_str_get_qstr(pyattr), MP_OBJ_NULL);
+    mp_store_attr(pyobj, mp_obj_str_get_qstr(pyattr), MP_OBJ_NULL);
+  } else {
+    record_traceback(nlr.ret_val);
+  }
   return 0;
 }
 
@@ -253,38 +270,24 @@ _pyproxy_delattr(mp_obj_t pyobj, JsRef jsattr)
 //   return result;
 // }
 
-// JsRef
-// _pyproxy_ownKeys(mp_obj_t pyobj)
-// {
-//   bool success = false;
-//   mp_obj_t pydir = NULL;
-//   JsRef iddir = NULL;
-//   JsRef identry = NULL;
+EMSCRIPTEN_KEEPALIVE JsRef
+_pyproxy_ownKeys(mp_obj_t pyobj)
+{
+  mp_obj_list_t * pydir = NULL;
+  JsRef iddir = NULL;
+  JsRef identry = NULL;
 
-//   pydir = PyObject_Dir(pyobj);
-//   FAIL_IF_NULL(pydir);
+  pydir = (mp_obj_list_t*)mp_call_function_1((mp_obj_t*)&mp_builtin_dir_obj, pyobj);
 
-//   iddir = JsArray_New();
-//   FAIL_IF_NULL(iddir);
-//   Py_ssize_t n = PyList_Size(pydir);
-//   FAIL_IF_MINUS_ONE(n);
-//   for (Py_ssize_t i = 0; i < n; ++i) {
-//     mp_obj_t pyentry = PyList_GetItem(pydir, i); /* borrowed */
-//     identry = python2js(pyentry);
-//     FAIL_IF_NULL(identry);
-//     FAIL_IF_MINUS_ONE(JsArray_Push(iddir, identry));
-//     hiwire_CLEAR(identry);
-//   }
-
-//   success = true;
-// finally:
-//   Py_CLEAR(pydir);
-//   hiwire_CLEAR(identry);
-//   if (!success) {
-//     hiwire_CLEAR(iddir);
-//   }
-//   return iddir;
-// }
+  iddir = JsArray_New();
+  for (int i = 0; i < pydir->len; ++i) {
+    mp_obj_t pyentry = pydir->items[i]; /* borrowed */
+    identry = python2js(pyentry);
+    (void)JsArray_Push(iddir, identry);
+    hiwire_CLEAR(identry);
+  }
+  return iddir;
+}
 
 /**
  * This sets up a call to _PyObject_Vectorcall. It's a helper function for
@@ -323,21 +326,24 @@ _pyproxy_apply(mp_obj_t callable,
   size_t total_args = numposargs + 2*numkwargs;
   JsRef jsitem = NULL;
   mp_obj_t pyargs[total_args];
+  JsRef idresult = NULL;
 
-  // Put both arguments and keyword arguments into pyargs
-  for (int i = 0; i < total_args; ++i) {
-    jsitem = JsArray_Get(jsargs, i);
-    // pyitem is moved into pyargs so we don't need to clear it later.
-    mp_obj_t pyitem = js2python(jsitem);
-    if (pyitem == NULL) {
-      // FAIL();
+  nlr_buf_t nlr;
+  if (nlr_push(&nlr) == 0) {
+    // Put both arguments and keyword arguments into pyargs
+    for (int i = 0; i < total_args; ++i) {
+      jsitem = JsArray_Get(jsargs, i);
+      // pyitem is moved into pyargs so we don't need to clear it later.
+      mp_obj_t pyitem = js2python(jsitem);
+      pyargs[i] = pyitem;
+      hiwire_CLEAR(jsitem);
     }
-    pyargs[i] = pyitem;
+    mp_obj_t pyresult = mp_call_function_n_kw(callable, numposargs, numkwargs, pyargs);
+    idresult = python2js(pyresult);
+  } else {
     hiwire_CLEAR(jsitem);
+    record_traceback(nlr.ret_val);
   }
-  mp_obj_t pyresult = mp_call_function_n_kw(callable, numposargs, numkwargs, pyargs);
-  JsRef idresult = python2js(pyresult);
-
   return idresult;
 }
 

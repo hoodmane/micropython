@@ -127,27 +127,24 @@ EM_JS_NUM(int, hiwire_init_js, (), {
       // clang-format off
       // This might have happened because the error indicator is set. Let's
       // check.
-      if (_PyErr_Occurred()) {
-        // This will lead to a more helpful error message.
-        let exc = _wrap_exception();
-        let e = Hiwire.pop_value(exc);
+      // if (_PyErr_Occurred()) {
+      //   // This will lead to a more helpful error message.
+      //   let exc = _wrap_exception();
+      //   let e = Hiwire.pop_value(exc);
         console.error(
-          `Pyodide internal error: Argument '${idval}' to hiwire.get_value is falsy. ` +
-          "This was probably because the Python error indicator was set when get_value was called. " +
-          "The Python error that caused this was:",
-          e
+          `Pyodide internal error: Argument '${idval}' to hiwire.get_value is falsy. `
         );
-        throw e;
-      } else {
-        console.error(
-          `Pyodide internal error: Argument '${idval}' to hiwire.get_value is falsy`
-          + ' (but error indicator is not set).'
-        );
-        throw new Error(
-          `Pyodide internal error: Argument '${idval}' to hiwire.get_value is falsy`
-          + ' (but error indicator is not set).'
-        );
-      }
+        throw new Error(`Pyodide internal error: Argument '${idval}' to hiwire.get_value is falsy. `);
+      // } else {
+      //   console.error(
+      //     `Pyodide internal error: Argument '${idval}' to hiwire.get_value is falsy`
+      //     + ' (but error indicator is not set).'
+      //   );
+      //   throw new Error(
+      //     `Pyodide internal error: Argument '${idval}' to hiwire.get_value is falsy`
+      //     + ' (but error indicator is not set).'
+      //   );
+      // }
       // clang-format on
     }
     if (!_hiwire.objects.has(idval)) {
@@ -361,9 +358,14 @@ hiwire_string_utf8_len(const unsigned char* ptr, size_t length) {
   return hiwire_string_utf8_len_js(ptr, length);
 }
 
-EM_JS_REF(JsRef, hiwire_string_utf8, (const char* ptr), {
+EM_JS_REF(JsRef, hiwire_string_utf8_js, (const char* ptr), {
   return Hiwire.new_value(UTF8ToString(ptr));
 });
+
+JsRef
+hiwire_string_utf8(const char* ptr) {
+  return hiwire_string_utf8_js(ptr);
+}
 
 EM_JS(void, hiwire_throw_error, (JsRef iderr), {
   throw Hiwire.pop_value(iderr);
@@ -832,14 +834,24 @@ EM_JS_BOOL(bool, JsArray_Check, (JsRef idobj), {
 });
 
 // clang-format off
-EM_JS_REF(JsRef, JsArray_New, (), {
+EM_JS_REF(JsRef, JsArray_New_js, (), {
   return Hiwire.new_value([]);
 });
+
+JsRef
+JsArray_New() {
+  return JsArray_New_js();
+}
 // clang-format on
 
-EM_JS_NUM(errcode, JsArray_Push, (JsRef idarr, JsRef idval), {
+EM_JS_NUM(int, JsArray_Push_js, (JsRef idarr, JsRef idval), {
   Hiwire.get_value(idarr).push(Hiwire.get_value(idval));
 });
+
+int
+JsArray_Push(JsRef idarr, JsRef idval) {
+  return JsArray_Push_js(idarr, idval);
+}
 
 EM_JS(int, JsArray_Push_unchecked, (JsRef idarr, JsRef idval), {
   const arr = Hiwire.get_value(idarr);
@@ -847,8 +859,9 @@ EM_JS(int, JsArray_Push_unchecked, (JsRef idarr, JsRef idval), {
   return arr.length - 1;
 });
 
-EM_JS_REF(JsRef, JsArray_Get, (JsRef idobj, int idx), {
+EM_JS_REF(JsRef, JsArray_Get_js, (JsRef idobj, int idx), {
   let obj = Hiwire.get_value(idobj);
+  console.warn({obj, idobj});
   let result = obj[idx];
   // clang-format off
   if (result === undefined && !(idx in obj)) {
@@ -857,6 +870,10 @@ EM_JS_REF(JsRef, JsArray_Get, (JsRef idobj, int idx), {
   }
   return Hiwire.new_value(result);
 });
+
+JsRef JsArray_Get(JsRef idobj, int idx) {
+  return JsArray_Get_js(idobj, idx);
+}
 
 EM_JS_NUM(errcode, JsArray_Set, (JsRef idobj, int idx, JsRef idval), {
   Hiwire.get_value(idobj)[idx] = Hiwire.get_value(idval);
