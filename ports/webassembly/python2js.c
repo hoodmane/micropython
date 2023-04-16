@@ -5,6 +5,7 @@
 // #include "pyproxy.h"
 #include "python2js.h"
 #include <emscripten.h>
+#include "pyproxy.h"
 
 #include "py/objint.h"
 #include "py/objstr.h"
@@ -50,24 +51,6 @@ _python2js_long(mp_obj_t x)
   mp_obj_int_to_bytes_impl(x, false, NUM_BYTES, data);
   return hiwire_int_from_digits((unsigned int*)data, NUM_BYTES/4);
   #undef NUM_BYTES
-  // int overflow;
-  // long x_long = PyLong_AsLongAndOverflow(x, &overflow);
-  // if (x_long == -1) {
-  //   if (!overflow) {
-  //     FAIL_IF_ERR_OCCURRED();
-  //   } else {
-  //     size_t ndigits = Py_ABS(Py_SIZE(x));
-  //     unsigned int digits[ndigits];
-  //     FAIL_IF_MINUS_ONE(_PyLong_AsByteArray((PyLongObject*)x,
-  //                                           (unsigned char*)digits,
-  //                                           4 * ndigits,
-  //                                           true /* little endian */,
-  //                                           true /* signed */));
-  //     return hiwire_int_from_digits(digits, ndigits);
-  //   }
-  // }
-// finally:
-  return NULL;
 }
 
 static JsRef
@@ -159,13 +142,12 @@ python2js_inner(mp_obj_t x, JsRef proxies, bool track_proxies)
     // PyErr_SetString(conversion_error, "No conversion known for x.");
     // FAIL();
   }
-  return NULL;
-  // JsRef proxy = pyproxy_new(x);
+  JsRef proxy = pyproxy_new(x);
   // FAIL_IF_NULL(proxy);
   // if (track_proxies) {
   //   JsArray_Push_unchecked(proxies, proxy);
   // }
-  // return proxy;
+  return proxy;
 // finally:
 //   if (PyErr_Occurred()) {
 //     if (!PyErr_ExceptionMatches(conversion_error)) {

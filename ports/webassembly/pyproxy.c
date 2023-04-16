@@ -11,11 +11,52 @@
 
 #include "py/builtin.h"
 #include "py/runtime.h"
+#include "py/objtype.h"
 
-#define IS_CALLABLE 1
+#define HAS_LENGTH   (1 << 0)
+#define HAS_SUBSCR   (1 << 1)
+#define HAS_CONTAINS (1 << 3)
+#define IS_ITERABLE  (1 << 4)
+#define IS_ITERATOR  (1 << 5)
+#define IS_AWAITABLE (1 << 6)
+#define IS_BUFFER    (1 << 7)
+#define IS_CALLABLE  (1 << 8)
+#define IS_ASYNC_ITERABLE (1 << 9)
+#define IS_ASYNC_ITERATOR (1 << 10)
+#define IS_GENERATOR (1 << 11)
+#define IS_ASYNC_GENERATOR (1 << 12)
 
 #define Py_ENTER()
 #define Py_EXIT()
+
+
+// We stick objects in here so that the gc will know we need them still
+mp_obj_t proxy_dict;
+
+EMSCRIPTEN_KEEPALIVE int
+pyproxy_getflags(mp_obj_t pyobj)
+{
+  const mp_obj_type_t *type = mp_obj_get_type(pyobj);
+  int result = 0;
+
+  #define SET_FLAG_IF(flag, cond)                                                \
+    if (cond) {                                                                  \
+      result |= flag;                                                            \
+    }
+  
+
+  SET_FLAG_IF(HAS_LENGTH, false);
+  SET_FLAG_IF(HAS_SUBSCR, MP_OBJ_TYPE_GET_SLOT_OR_NULL(type, subscr) != NULL);
+  SET_FLAG_IF(HAS_CONTAINS, MP_OBJ_TYPE_GET_SLOT_OR_NULL(type, binary_op));
+  SET_FLAG_IF(IS_CALLABLE, mp_obj_is_callable(pyobj));
+  SET_FLAG_IF(IS_ITERABLE, false);
+  SET_FLAG_IF(IS_ITERATOR, false);
+
+
+  #undef SET_FLAG_IF
+  return result;
+}
+
 
 // Use raw EM_JS for the next five commands. We intend to signal a fatal error
 // if a JavaScript error is thrown.
@@ -161,7 +202,7 @@ _pyproxy_getattr(mp_obj_t pyobj, JsRef idkey, JsRef proxyCache)
 }
 
 
-EMSCRIPTEN_KEEPALIVE int
+EMSCRIPTEN_KEEPALIVE void
 _pyproxy_setattr(mp_obj_t pyobj, JsRef jsattr, JsRef jsval)
 {
   nlr_buf_t nlr;
@@ -173,10 +214,9 @@ _pyproxy_setattr(mp_obj_t pyobj, JsRef jsattr, JsRef jsval)
   } else {
     record_traceback(nlr.ret_val);
   }
-  return 0;
 }
 
-EMSCRIPTEN_KEEPALIVE int
+EMSCRIPTEN_KEEPALIVE void
 _pyproxy_delattr(mp_obj_t pyobj, JsRef jsattr)
 {
   nlr_buf_t nlr;
@@ -187,88 +227,60 @@ _pyproxy_delattr(mp_obj_t pyobj, JsRef jsattr)
   } else {
     record_traceback(nlr.ret_val);
   }
-  return 0;
 }
 
-// JsRef
-// _pyproxy_getitem(mp_obj_t pyobj, JsRef idkey)
-// {
-//   bool success = false;
-//   mp_obj_t pykey = NULL;
-//   mp_obj_t pyresult = NULL;
-//   JsRef result = NULL;
+EMSCRIPTEN_KEEPALIVE JsRef
+_pyproxy_getitem(mp_obj_t pyobj, JsRef idkey)
+{
+  nlr_buf_t nlr;
+  if (nlr_push(&nlr) == 0) {
+    mp_obj_t pykey = js2python(idkey);
+    mp_obj_t pyresult = mp_call_function_2((mp_obj_t*)&mp_op_getitem_obj, pyobj, pykey);
+    return python2js(pyresult);
+  } else {
+    record_traceback(nlr.ret_val);
+    return NULL;
+  }
+};
 
-//   pykey = js2python(idkey);
-//   FAIL_IF_NULL(pykey);
-//   pyresult = PyObject_GetItem(pyobj, pykey);
-//   FAIL_IF_NULL(pyresult);
-//   result = python2js(pyresult);
-//   FAIL_IF_NULL(result);
+EMSCRIPTEN_KEEPALIVE void
+_pyproxy_setitem(mp_obj_t pyobj, JsRef idkey, JsRef idval)
+{
+  nlr_buf_t nlr;
+  if (nlr_push(&nlr) == 0) {
 
-//   success = true;
-// finally:
-//   if (!success && (PyErr_ExceptionMatches(PyExc_KeyError) ||
-//                    PyErr_ExceptionMatches(PyExc_IndexError))) {
-//     PyErr_Clear();
-//   }
-//   Py_CLEAR(pykey);
-//   Py_CLEAR(pyresult);
-//   if (!success) {
-//     hiwire_CLEAR(result);
-//   }
-//   return result;
-// };
+    mp_obj_t pykey = js2python(idkey);
+    mp_obj_t pyval = js2python(idval);
+    mp_call_function_n_kw((mp_obj_t*)&mp_op_setitem_obj, 3, 0, (const mp_obj_t[3]){pyobj, pykey, pyval});
+  } else {
+    record_traceback(nlr.ret_val);
+  }
+}
 
-// int
-// _pyproxy_setitem(mp_obj_t pyobj, JsRef idkey, JsRef idval)
-// {
-//   bool success = false;
-//   mp_obj_t pykey = NULL;
-//   mp_obj_t pyval = NULL;
+EMSCRIPTEN_KEEPALIVE void
+_pyproxy_delitem(mp_obj_t pyobj, JsRef idkey)
+{
+  nlr_buf_t nlr;
+  if (nlr_push(&nlr) == 0) {
+    mp_obj_t pykey = js2python(idkey);
+    mp_call_function_2((mp_obj_t*)&mp_op_delitem_obj, pyobj, pykey);
+  } else {
+    record_traceback(nlr.ret_val);
+  }
+}
 
-//   pykey = js2python(idkey);
-//   FAIL_IF_NULL(pykey);
-//   pyval = js2python(idval);
-//   FAIL_IF_NULL(pyval);
-//   FAIL_IF_MINUS_ONE(PyObject_SetItem(pyobj, pykey, pyval));
-
-//   success = true;
-// finally:
-//   Py_CLEAR(pykey);
-//   Py_CLEAR(pyval);
-//   return success ? 0 : -1;
-// }
-
-// int
-// _pyproxy_delitem(mp_obj_t pyobj, JsRef idkey)
-// {
-//   bool success = false;
-//   mp_obj_t pykey = NULL;
-
-//   pykey = js2python(idkey);
-//   FAIL_IF_NULL(pykey);
-//   FAIL_IF_MINUS_ONE(PyObject_DelItem(pyobj, pykey));
-
-//   success = true;
-// finally:
-//   Py_CLEAR(pykey);
-//   return success ? 0 : -1;
-// }
-
-// int
-// _pyproxy_contains(mp_obj_t pyobj, JsRef idkey)
-// {
-//   mp_obj_t pykey = NULL;
-//   int result = -1;
-
-//   pykey = js2python(idkey);
-//   FAIL_IF_NULL(pykey);
-//   result = PySequence_Contains(pyobj, pykey);
-
-// finally:
-//   Py_CLEAR(pykey);
-//   return result;
-// }
+EMSCRIPTEN_KEEPALIVE int
+_pyproxy_contains(mp_obj_t pyobj, JsRef idkey)
+{
+  nlr_buf_t nlr;
+  if (nlr_push(&nlr) == 0) {
+    mp_obj_t pykey = js2python(idkey);
+    return mp_call_function_2((mp_obj_t*)&mp_op_contains_obj, pyobj, pykey) == mp_const_true;
+  } else {
+    record_traceback(nlr.ret_val);
+    return -1;
+  }
+}
 
 EMSCRIPTEN_KEEPALIVE JsRef
 _pyproxy_ownKeys(mp_obj_t pyobj)
@@ -879,7 +891,59 @@ EM_JS_REF(JsRef, pyproxy_new_js, (mp_obj_t * ptrobj), {
 
 JsRef
 pyproxy_new(mp_obj_t obj) {
-  return pyproxy_new_js(obj);
+  nlr_buf_t nlr;
+  if (nlr_push(&nlr) == 0) {
+    mp_int_t refcnt = 0;
+    mp_map_t *proxy_dict_map = mp_obj_dict_get_map(proxy_dict);
+    mp_obj_t objkey = mp_obj_new_int((size_t)obj);
+    mp_map_elem_t *elem = mp_map_lookup(proxy_dict_map, objkey, MP_MAP_LOOKUP);
+    if(elem != NULL){
+      size_t len; 
+      mp_obj_t *items;
+      mp_obj_tuple_get(elem->value, &len, &items);
+      refcnt = MP_OBJ_SMALL_INT_VALUE(items[1]);
+    }
+    refcnt ++;
+    mp_obj_t tuple[2];
+    tuple[0] = obj;
+    tuple[1] = mp_obj_new_int(refcnt);
+    mp_obj_t val = mp_obj_new_tuple(2, tuple);
+    mp_obj_dict_store(proxy_dict, objkey, val);
+    return pyproxy_new_js(obj);
+  } else {
+    printf("Internal error in pyproxy_new:\n");
+    mp_obj_print_exception(&mp_plat_print, MP_OBJ_FROM_PTR(nlr.ret_val));
+    return NULL;
+  }
+}
+
+EMSCRIPTEN_KEEPALIVE void
+pyproxy_decref(mp_obj_t obj) {
+  nlr_buf_t nlr;
+  if (nlr_push(&nlr) == 0) {
+    mp_map_t *proxy_dict_map = mp_obj_dict_get_map(proxy_dict);
+    mp_obj_t objkey = mp_obj_new_int((size_t)obj);
+    mp_map_elem_t *elem = mp_map_lookup(proxy_dict_map, objkey, MP_MAP_LOOKUP);
+    if(elem == NULL){
+      // Internal error...
+      printf("Internal error...");
+      return;
+    }
+    mp_int_t refcnt = MP_OBJ_SMALL_INT_VALUE(elem->value);
+    refcnt --;
+    if(refcnt == 0) {
+      mp_obj_dict_delete(objkey, obj);
+      return;
+    }
+    mp_obj_t tuple[2];
+    tuple[0] = obj;
+    tuple[1] = mp_obj_new_int(refcnt);
+    mp_obj_t val = mp_obj_new_int(refcnt);
+    mp_obj_dict_store(proxy_dict, objkey, val);
+  } else {
+    printf("Internal error in pyproxy_decref:\n");
+    mp_obj_print_exception(&mp_plat_print, MP_OBJ_FROM_PTR(nlr.ret_val));
+  }
 }
 
 // /**
@@ -1081,6 +1145,8 @@ pyproxy_new(mp_obj_t obj) {
 #include "include_js_file.h"
 #include "pyproxy.js"
 
+
 int pyproxy_init(void) {
+  proxy_dict = mp_obj_new_dict(0);
   return pyproxy_init_js();
 }

@@ -14,7 +14,6 @@ JS_FILE(pyproxy_init_js, () => {
     let num_kwargs = kwargs_names.length;
     jsargs.push(...kwargs_names.flat());
     let idargs = Hiwire.new_value(jsargs);
-    console.warn("XX", { jsargs, idargs });
     let idresult;
     try {
       Py_ENTER();
@@ -26,11 +25,7 @@ JS_FILE(pyproxy_init_js, () => {
       );
       Py_EXIT();
     } catch (e) {
-      if (API._skip_unwind_fatal_error) {
-        API.maybe_fatal_error(e);
-      } else {
-        API.fatal_error(e);
-      }
+      API.fatal_error(e);
       return;
     } finally {
       Hiwire.decref(idargs);
@@ -47,6 +42,53 @@ JS_FILE(pyproxy_init_js, () => {
   Module.callPyObject = function (ptrobj, jsargs) {
     return Module.callPyObjectKwargs(ptrobj, jsargs, {});
   };
+
+  Module.pyproxy_destroy = function (
+    proxy,
+    destroyed_msg,
+    destroy_roundtrip,
+  ) {
+    if (proxy.$$.ptr === 0) {
+      return;
+    }
+    if (!destroy_roundtrip && proxy.$$props.roundtrip) {
+      return;
+    }
+    let ptrobj = _getPtr(proxy);
+    // Module.finalizationRegistry.unregister(proxy.$$);
+    destroyed_msg = destroyed_msg || "Object has already been destroyed";
+    let proxy_type = proxy.type;
+    let proxy_repr;
+    try {
+      proxy_repr = proxy.toString();
+    } catch (e) {
+      if (e.pyodide_fatal_error) {
+        throw e;
+      }
+    }
+    // Maybe the destructor will call JavaScript code that will somehow try
+    // to use this proxy. Mark it deleted before decrementing reference count
+    // just in case!
+    proxy.$$.ptr = 0;
+    _pyproxy_decref(ptrobj);
+    destroyed_msg += "\n" + `The object was of type "${proxy_type}" and `;
+    if (proxy_repr) {
+      destroyed_msg += `had repr "${proxy_repr}"`;
+    } else {
+      destroyed_msg += "an error was raised when trying to generate its repr";
+    }
+    proxy.$$.destroyed_msg = destroyed_msg;
+    // pyproxy_decref_cache(proxy.$$.cache);
+    // try {
+    //   Py_ENTER();
+    //   Module._Py_DecRef(ptrobj);
+    //   trace_pyproxy_dealloc(proxy);
+    //   Py_EXIT();
+    // } catch (e) {
+    //   API.fatal_error(e);
+    // }
+  };
+
 
   class PyProxy {
     /**
@@ -125,7 +167,159 @@ JS_FILE(pyproxy_init_js, () => {
         props: this.$$props,
       });
     }
+  }
+  let pyproxyClassMap = new Map();
+  /**
+   * Retrieve the appropriate mixins based on the features requested in flags.
+   * Used by pyproxy_new. The "flags" variable is produced by the C function
+   * pyproxy_getflags. Multiple PyProxies with the same set of feature flags
+   * will share the same prototype, so the memory footprint of each individual
+   * PyProxy is minimal.
+   * @private
+   */
+  function getPyProxyClass(flags) {
+    const FLAG_TYPE_PAIRS = [
+      // [HAS_LENGTH, PyLengthMethods],
+      [HAS_SUBSCR, PySubscriptMethods],
+      [HAS_CONTAINS, PyContainsMethods],
+      // [IS_ITERABLE, PyIterableMethods],
+      // [IS_ITERATOR, PyIteratorMethods],
+      // [IS_GENERATOR, PyGeneratorMethods],
+      // [IS_ASYNC_ITERABLE, PyAsyncIterableMethods],
+      // [IS_ASYNC_ITERATOR, PyAsyncIteratorMethods],
+      // [IS_ASYNC_GENERATOR, PyAsyncGeneratorMethods],
+      // [IS_AWAITABLE, PyAwaitableMethods],
+      // [IS_BUFFER, PyBufferMethods],
+      [IS_CALLABLE, PyCallableMethods],
+    ];
+    let result = pyproxyClassMap.get(flags);
+    if (result) {
+      return result;
+    }
+    let descriptors = {};
+    for (let [feature_flag, methods] of FLAG_TYPE_PAIRS) {
+      if (flags & feature_flag) {
+        Object.assign(
+          descriptors,
+          Object.getOwnPropertyDescriptors(methods.prototype)
+        );
+      }
+    }
+    // Use base constructor (just throws an error if construction is attempted).
+    descriptors.constructor = Object.getOwnPropertyDescriptor(
+      PyProxy.prototype,
+      "constructor"
+    );
+    Object.assign(
+      descriptors,
+      Object.getOwnPropertyDescriptors({ $$flags: flags })
+    );
+    let new_proto = Object.create(PyProxy.prototype, descriptors);
+    function NewPyProxyClass() {}
+    NewPyProxyClass.prototype = new_proto;
+    pyproxyClassMap.set(flags, NewPyProxyClass);
+    return NewPyProxyClass;
+  }
 
+  // Controlled by HAS_SUBSCR
+  class PySubscriptMethods {
+    /**
+     * This translates to the Python code ``obj[key]``.
+     *
+     * @param key The key to look up.
+     * @returns The corresponding value.
+     */
+    get(key) {
+      let ptrobj = _getPtr(this);
+      let idkey = Hiwire.new_value(key);
+      let idresult;
+      try {
+        Py_ENTER();
+        idresult = Module.__pyproxy_getitem(ptrobj, idkey);
+        Py_EXIT();
+      } catch (e) {
+        API.fatal_error(e);
+      } finally {
+        Hiwire.decref(idkey);
+      }
+      throw_if_error();
+      return Hiwire.pop_value(idresult);
+    }
+
+    /**
+     * This translates to the Python code ``obj[key] = value``.
+     *
+     * @param key The key to set.
+     * @param value The value to set it to.
+     */
+    set(key, value) {
+      let ptrobj = _getPtr(this);
+      let idkey = Hiwire.new_value(key);
+      let idval = Hiwire.new_value(value);
+      let errcode;
+      try {
+        Py_ENTER();
+        errcode = Module.__pyproxy_setitem(ptrobj, idkey, idval);
+        Py_EXIT();
+      } catch (e) {
+        API.fatal_error(e);
+      } finally {
+        Hiwire.decref(idkey);
+        Hiwire.decref(idval);
+      }
+      throw_if_error();
+    }
+
+    /**
+     * This translates to the Python code ``del obj[key]``.
+     *
+     * @param key The key to delete.
+     */
+    delete(key) {
+      let ptrobj = _getPtr(this);
+      let idkey = Hiwire.new_value(key);
+      let errcode;
+      try {
+        Py_ENTER();
+        errcode = Module.__pyproxy_delitem(ptrobj, idkey);
+        Py_EXIT();
+      } catch (e) {
+        API.fatal_error(e);
+      } finally {
+        Hiwire.decref(idkey);
+      }
+      throw_if_error();
+    }
+  }
+
+  // Controlled by HAS_CONTAINS flag, appears for any class with __contains__ or
+  // sq_contains
+  class PyContainsMethods {
+    /**
+     * This translates to the Python code ``key in obj``.
+     *
+     * @param key The key to check for.
+     * @returns Is ``key`` present?
+     */
+    has(key) {
+      let ptrobj = _getPtr(this);
+      let idkey = Hiwire.new_value(key);
+      let result;
+      try {
+        Py_ENTER();
+        result = Module.__pyproxy_contains(ptrobj, idkey);
+        Py_EXIT();
+      } catch (e) {
+        API.fatal_error(e);
+      } finally {
+        Hiwire.decref(idkey);
+      }
+      throw_if_error();
+      return result === 1;
+    }
+  }
+
+  class PyCallableMethods {
     /**
      * The ``apply()`` method calls the specified function with a given this
      * value, and arguments provided as an array (or an array-like object). Like
@@ -150,7 +344,7 @@ JS_FILE(pyproxy_init_js, () => {
     callKwargs(...jsargs) {
       if (jsargs.length === 0) {
         throw new TypeError(
-          "callKwargs requires at least one argument (the key word argument object)",
+          "callKwargs requires at least one argument (the key word argument object)"
         );
       }
       let kwargs = jsargs.pop();
@@ -162,8 +356,9 @@ JS_FILE(pyproxy_init_js, () => {
       }
       return Module.callPyObjectKwargs(_getPtr(this), jsargs, kwargs);
     }
-
   }
+
+
 
   /**
    * Create a new PyProxy wrapping ptrobj which is a PyObject*.
@@ -184,9 +379,8 @@ JS_FILE(pyproxy_init_js, () => {
     // if (flags === -1) {
     //   Module._pythonexc2js();
     // }
-    // const cls = Module.getPyProxyClass(flags);
-    const cls = PyProxy;
-    const flags = IS_CALLABLE;
+    const flags = Module._pyproxy_getflags(ptrobj);
+    const cls = getPyProxyClass(flags);
     let target;
     if (flags & IS_CALLABLE) {
       // In this case we are effectively subclassing Function in order to ensure

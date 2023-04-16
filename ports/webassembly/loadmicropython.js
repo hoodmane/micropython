@@ -32,20 +32,28 @@ async function loadMicroPython(options) {
     _createMicropythonModule(Module);
     await moduleLoaded;
     Module._mp_js_init(heapsize);
+    function runPython(code) {
+        const ptr = Module.stringToNewUTF8(code);
+        Module._mp_js_do_str(ptr);
+        Module._free(ptr);
+    }
+    function pyimport(name) {
+        const nameid = Module.hiwire.new_value(name);
+        const proxy_id = Module._pyimport(nameid);
+        Module.hiwire.decref(nameid);
+        Module.api.throw_if_error();
+        return Module.hiwire.pop_value(proxy_id);
+    }
+    const main = pyimport("__main__");
+    const globals = main.__dict__;
+    main.destroy();
+
     return {
         _module: Module,
         FS : Module.FS,
-        runPython(code) {
-            const ptr = Module.stringToNewUTF8(code);
-            Module._mp_js_do_str(ptr);
-            Module._free(ptr);
-        },
-        pyimport(name) {
-            const nameid = Module.hiwire.new_value(name);
-            const proxy_id = Module._pyimport(nameid);
-            Module.hiwire.decref(nameid);
-            Module.api.throw_if_error();
-            return Module.hiwire.pop_value(proxy_id);
-        }
+        runPython,
+        pyimport,
+        globals
+        // registerJsModule
     };
 }
