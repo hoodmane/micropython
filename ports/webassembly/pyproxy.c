@@ -194,7 +194,9 @@ _pyproxy_getattr(mp_obj_t pyobj, JsRef idkey, JsRef proxyCache)
     // and set pydescr to the actual attribute (in particular, I believe that it
     // will resolve other types of getter descriptors automatically).
     mp_obj_t pyresult = mp_load_attr(pyobj, mp_obj_str_get_qstr(pykey));
-    return python2js(pyresult);
+    JsRef result = python2js(pyresult);
+    nlr_pop();
+    return result;
   } else {
     record_traceback(nlr.ret_val);
     return NULL;
@@ -211,6 +213,7 @@ _pyproxy_setattr(mp_obj_t pyobj, JsRef jsattr, JsRef jsval)
     mp_obj_t pyval = js2python(jsval);
 
     mp_store_attr(pyobj, mp_obj_str_get_qstr(pyattr), pyval);
+    nlr_pop();
   } else {
     record_traceback(nlr.ret_val);
   }
@@ -224,6 +227,7 @@ _pyproxy_delattr(mp_obj_t pyobj, JsRef jsattr)
     mp_obj_t pyattr = js2python(jsattr);
 
     mp_store_attr(pyobj, mp_obj_str_get_qstr(pyattr), MP_OBJ_NULL);
+    nlr_pop();
   } else {
     record_traceback(nlr.ret_val);
   }
@@ -236,7 +240,9 @@ _pyproxy_getitem(mp_obj_t pyobj, JsRef idkey)
   if (nlr_push(&nlr) == 0) {
     mp_obj_t pykey = js2python(idkey);
     mp_obj_t pyresult = mp_call_function_2((mp_obj_t*)&mp_op_getitem_obj, pyobj, pykey);
-    return python2js(pyresult);
+    JsRef result = python2js(pyresult);
+    nlr_pop();
+    return result;
   } else {
     record_traceback(nlr.ret_val);
     return NULL;
@@ -252,6 +258,7 @@ _pyproxy_setitem(mp_obj_t pyobj, JsRef idkey, JsRef idval)
     mp_obj_t pykey = js2python(idkey);
     mp_obj_t pyval = js2python(idval);
     mp_call_function_n_kw((mp_obj_t*)&mp_op_setitem_obj, 3, 0, (const mp_obj_t[3]){pyobj, pykey, pyval});
+    nlr_pop();
   } else {
     record_traceback(nlr.ret_val);
   }
@@ -264,6 +271,7 @@ _pyproxy_delitem(mp_obj_t pyobj, JsRef idkey)
   if (nlr_push(&nlr) == 0) {
     mp_obj_t pykey = js2python(idkey);
     mp_call_function_2((mp_obj_t*)&mp_op_delitem_obj, pyobj, pykey);
+    nlr_pop();
   } else {
     record_traceback(nlr.ret_val);
   }
@@ -275,7 +283,9 @@ _pyproxy_contains(mp_obj_t pyobj, JsRef idkey)
   nlr_buf_t nlr;
   if (nlr_push(&nlr) == 0) {
     mp_obj_t pykey = js2python(idkey);
-    return mp_call_function_2((mp_obj_t*)&mp_op_contains_obj, pyobj, pykey) == mp_const_true;
+    int result = mp_call_function_2((mp_obj_t*)&mp_op_contains_obj, pyobj, pykey) == mp_const_true;
+    nlr_pop();
+    return result;
   } else {
     record_traceback(nlr.ret_val);
     return -1;
@@ -335,13 +345,11 @@ _pyproxy_apply(mp_obj_t callable,
                size_t numkwargs,
                JsRef jsargs)
 {
-  size_t total_args = numposargs + 2*numkwargs;
   JsRef jsitem = NULL;
-  mp_obj_t pyargs[total_args];
-  JsRef idresult = NULL;
-
   nlr_buf_t nlr;
   if (nlr_push(&nlr) == 0) {
+    size_t total_args = numposargs + 2*numkwargs;
+    mp_obj_t pyargs[total_args];
     // Put both arguments and keyword arguments into pyargs
     for (int i = 0; i < total_args; ++i) {
       jsitem = JsArray_Get(jsargs, i);
@@ -351,12 +359,14 @@ _pyproxy_apply(mp_obj_t callable,
       hiwire_CLEAR(jsitem);
     }
     mp_obj_t pyresult = mp_call_function_n_kw(callable, numposargs, numkwargs, pyargs);
-    idresult = python2js(pyresult);
+    JsRef idresult = python2js(pyresult);
+    nlr_pop();
+    return idresult;
   } else {
     hiwire_CLEAR(jsitem);
     record_traceback(nlr.ret_val);
+    return NULL;
   }
-  return idresult;
 }
 
 // JsRef
@@ -909,7 +919,9 @@ pyproxy_new(mp_obj_t obj) {
     tuple[1] = mp_obj_new_int(refcnt);
     mp_obj_t val = mp_obj_new_tuple(2, tuple);
     mp_obj_dict_store(proxy_dict, objkey, val);
-    return pyproxy_new_js(obj);
+    JsRef result = pyproxy_new_js(obj);
+    nlr_pop();
+    return result;
   } else {
     printf("Internal error in pyproxy_new:\n");
     mp_obj_print_exception(&mp_plat_print, MP_OBJ_FROM_PTR(nlr.ret_val));
