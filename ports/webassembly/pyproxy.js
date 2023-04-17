@@ -445,6 +445,7 @@ JS_FILE(pyproxy_init_js, () => {
     }
     return ptr;
   }
+  Module.PyProxy_getPtr = _getPtr;
 
   // See explanation of which methods should be defined here and what they do
   // here:
