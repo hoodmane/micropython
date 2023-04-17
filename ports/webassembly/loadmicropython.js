@@ -57,18 +57,16 @@ async function loadMicroPython(options) {
   dict.destroy();
 
   runPython("import sys", { globals: tmp_dict });
-  runPython(
-    "def register_js_module(name, mod): sys.modules.update({name: mod})",
-    { globals: tmp_dict }
-  );
+  runPython("def register_js_module(name, mod): sys.modules[name] = mod", {
+    globals: tmp_dict,
+  });
   const register_js_module = tmp_dict.get("register_js_module");
   tmp_dict.destroy();
 
   function registerJsModule(name, mod) {
     register_js_module(name, mod);
   }
-
-  return {
+  const public_api = {
     _module: Module,
     FS: Module.FS,
     runPython,
@@ -76,4 +74,8 @@ async function loadMicroPython(options) {
     globals,
     registerJsModule,
   };
+  registerJsModule("js", globalThis);
+  registerJsModule("pyodide_js", public_api);
+
+  return public_api;
 }

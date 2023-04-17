@@ -31,7 +31,7 @@ EM_JS(bool, hiwire_to_bool, (JsRef val), {
 // clang-format on
 
 #ifdef DEBUG_F
-bool tracerefs;
+EMSCRIPTEN_KEEPALIVE bool tracerefs = false;
 #endif
 
 #define HIWIRE_INIT_CONST(js_const, hiwire_attr, js_value)                     \

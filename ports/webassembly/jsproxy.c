@@ -124,17 +124,24 @@ STATIC void JsProxy_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
     JsProxy *self = MP_OBJ_TO_PTR(self_in);
     JsRef jsvalue = NULL;
     if (dest[0] == MP_OBJ_NULL) {
-        // Load attribute.
+        // Load
         if (attr == MP_QSTR_new) {
             // Special case to handle construction of JS objects.
             return;
         }
         jsvalue = JsObject_GetString(self->ref, qstr_str(attr));
+        if(jsvalue == NULL) {
+          mp_raise_msg_varg(&mp_type_AttributeError,
+              MP_ERROR_TEXT("'%s' object has no attribute '%q'"),
+              mp_obj_get_type_str(self_in), attr);
+        }
         dest[0] = js2python(jsvalue);
     } else if (dest[1] == MP_OBJ_NULL) {
+        // Delete
         JsObject_DeleteString(self->ref, qstr_str(attr));
+        dest[0] = MP_OBJ_NULL;
     } else {
-        // Store attribute.
+        // Store
         jsvalue = js2python(dest[1]);
         JsObject_SetString(self->ref, qstr_str(attr), jsvalue);
         dest[0] = MP_OBJ_NULL;
