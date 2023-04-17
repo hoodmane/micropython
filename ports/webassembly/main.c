@@ -29,7 +29,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "py/builtin.h"
 #include "py/compile.h"
 #include "py/runtime.h"
 #include "py/repl.h"
@@ -39,24 +38,9 @@
 #include "extmod/vfs_posix.h"
 #include "shared/runtime/pyexec.h"
 
-#include "emscripten.h"
 #include "library.h"
-#include "pyproxy.h"
-#include "js2python.h"
+#include "emscripten.h"
 
-
-EMSCRIPTEN_KEEPALIVE JsRef
-pyimport(JsRef name) {
-    nlr_buf_t nlr;
-    if (nlr_push(&nlr) == 0) {
-        mp_obj_t pyname = js2python(name);
-        mp_obj_t result = mp_builtin___import__(1, &pyname);
-        return pyproxy_new(result);
-    } else {
-        record_traceback(nlr.ret_val);
-        return NULL;
-    }
-}
     
 
 #if MICROPY_ENABLE_COMPILER
@@ -99,9 +83,8 @@ int mp_js_process_char(int c) {
     return pyexec_event_repl_process_char(c);
 }
 
-int hiwire_init(void);
-int js2python_init(void);
-int pyproxy_init(void);
+void
+pyodide_init(void);
 
 void mp_js_init(int heap_size) {
     #if MICROPY_ENABLE_GC
@@ -113,10 +96,8 @@ void mp_js_init(int heap_size) {
     static mp_obj_t pystack[1024];
     mp_pystack_init(pystack, &pystack[MP_ARRAY_SIZE(pystack)]);
     #endif
-    hiwire_init();
-    js2python_init();
-    pyproxy_init();
-    mp_init();
+
+    pyodide_init();
 
     #if MICROPY_VFS_POSIX
     {

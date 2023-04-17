@@ -11,8 +11,8 @@ CC = emcc
 LD = emcc
 
 INC += -I.
-INC += -I$(TOP)
-INC += -I$(BUILD)
+INC += -I$(abspath $(TOP))
+INC += -I$(abspath $(BUILD))
 
 CFLAGS += -std=c99 -Wall -Werror -Wdouble-promotion -Wfloat-conversion
 CFLAGS += -Os -DNDEBUG -g2
@@ -30,12 +30,14 @@ SRC_C = \
 	main.c \
 	mphalport.c \
 	modutime.c \
-	hiwire.c \
-	js2python.c \
-	python2js.c \
-	pyproxy.c \
-	jsproxy.c \
-	error_handling.c \
+	pyodide/error_handling.c \
+	pyodide/hiwire.c \
+	pyodide/js2python.c \
+	pyodide/jsproxy.c \
+	pyodide/pyodide_init.c \
+	pyodide/pyproxy.c \
+	pyodide/python2js.c \
+
 
 SRC_QSTR += $(SRC_C) $(SRC_SHARED)
 
@@ -63,11 +65,11 @@ JSFLAGS += -s EXPORTED_RUNTIME_METHODS="['stringToNewUTF8', 'FS']"
 JSFLAGS += -s --memory-init-file 0
 JSFLAGS += --js-library library.js
 JSFLAGS += -s MODULARIZE -s EXPORT_NAME=_createMicropythonModule
-JSFLAGS += --pre-js pre.js --pre-js error_handling.js
+JSFLAGS += --pre-js pyodide/pre.js --pre-js pyodide/error_handling.js
 
 all: $(BUILD)/micropython.js
 
-$(BUILD)/micropython.js: $(OBJ) library.js loadmicropython.js pre.js error_handling.js
+$(BUILD)/micropython.js: $(OBJ) library.js loadmicropython.js pyodide/pre.js pyodide/error_handling.js
 	echo $(OBJ)
 	$(ECHO) "LINK $(BUILD)/micropython.js"
 	$(Q)emcc $(LDFLAGS) -o $(BUILD)/micropython.js $(OBJ) $(JSFLAGS)
