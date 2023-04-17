@@ -30,7 +30,6 @@ SRC_C = \
 	main.c \
 	mphalport.c \
 	modutime.c \
-	myfile.c \
 	hiwire.c \
 	js2python.c \
 	python2js.c \
