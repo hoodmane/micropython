@@ -43,11 +43,7 @@ JS_FILE(pyproxy_init_js, () => {
     return Module.callPyObjectKwargs(ptrobj, jsargs, {});
   };
 
-  Module.pyproxy_destroy = function (
-    proxy,
-    destroyed_msg,
-    destroy_roundtrip,
-  ) {
+  Module.pyproxy_destroy = function (proxy, destroyed_msg, destroy_roundtrip) {
     if (proxy.$$.ptr === 0) {
       return;
     }
@@ -88,7 +84,6 @@ JS_FILE(pyproxy_init_js, () => {
     //   API.fatal_error(e);
     // }
   };
-
 
   class PyProxy {
     /**
@@ -357,8 +352,6 @@ JS_FILE(pyproxy_init_js, () => {
       return Module.callPyObjectKwargs(_getPtr(this), jsargs, kwargs);
     }
   }
-
-
 
   /**
    * Create a new PyProxy wrapping ptrobj which is a PyObject*.

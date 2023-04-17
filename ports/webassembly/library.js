@@ -25,32 +25,42 @@
  */
 
 mergeInto(LibraryManager.library, {
-    mp_js_ticks_ms__postset: "var MP_JS_EPOCH = Date.now()",
-    mp_js_ticks_ms: function() {
-        return Date.now() - MP_JS_EPOCH;
-    },
+  mp_js_ticks_ms__postset: "var MP_JS_EPOCH = Date.now()",
+  mp_js_ticks_ms: function () {
+    return Date.now() - MP_JS_EPOCH;
+  },
 
-    mp_js_hook: function() {
-        if (typeof window === 'undefined') {
-            var mp_interrupt_char = Module.ccall('mp_hal_get_interrupt_char', 'number', ['number'], ['null']);
-            var fs = require('fs');
+  mp_js_hook: function () {
+    if (typeof window === "undefined") {
+      var mp_interrupt_char = Module.ccall(
+        "mp_hal_get_interrupt_char",
+        "number",
+        ["number"],
+        ["null"]
+      );
+      var fs = require("fs");
 
-            var buf = Buffer.alloc(1);
-            try {
-                var n = fs.readSync(process.stdin.fd, buf, 0, 1);
-                if (n > 0) {
-                    if (buf[0] == mp_interrupt_char) {
-                        Module.ccall('mp_sched_keyboard_interrupt', 'null', ['null'], ['null']);
-                    } else {
-                        process.stdout.write(String.fromCharCode(buf[0]));
-                    }
-                }
-            } catch (e) {
-                if (e.code === 'EAGAIN') {
-                } else {
-                    throw e;
-                }
-            }
+      var buf = Buffer.alloc(1);
+      try {
+        var n = fs.readSync(process.stdin.fd, buf, 0, 1);
+        if (n > 0) {
+          if (buf[0] == mp_interrupt_char) {
+            Module.ccall(
+              "mp_sched_keyboard_interrupt",
+              "null",
+              ["null"],
+              ["null"]
+            );
+          } else {
+            process.stdout.write(String.fromCharCode(buf[0]));
+          }
         }
-    },
+      } catch (e) {
+        if (e.code === "EAGAIN") {
+        } else {
+          throw e;
+        }
+      }
+    }
+  },
 });

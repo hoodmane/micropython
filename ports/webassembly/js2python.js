@@ -28,9 +28,9 @@ JS_FILE(js2python_init_js, () => {
       value >>= BigInt(32);
     }
     let result = _mp_obj_int_from_bytes_impl(
-      false,  /* little endian */
+      false /* little endian */,
       length * 4 /* length in bytes */,
-      ptr,
+      ptr
     );
     stackRestore(stackTop);
     return result;
@@ -81,8 +81,7 @@ JS_FILE(js2python_init_js, () => {
       return __js2python_true();
     } else if (value === false) {
       return __js2python_false();
-    } 
-    else if (API.isPyProxy(value)) {
+    } else if (API.isPyProxy(value)) {
       if (value.$$.ptr == 0) {
         // Make sure to throw an error!
         Module.PyProxy_getPtr(value);
