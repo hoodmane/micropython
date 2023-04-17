@@ -20,12 +20,23 @@ pyimport(JsRef name) {
 }
 
 
+EM_JS(void, lib_init, (void), {
+    FS.mkdir('/lib/');
+    for (const dir of pylibManifest.dirs) {
+        FS.mkdir('/lib/' + dir);
+    }
+    for (const [path, value] of pylibManifest.files) {
+        FS.writeFile('/lib/' + path, value);
+    }
+})
+
 int hiwire_init(void);
 int js2python_init(void);
 int pyproxy_init(void);
 
 void
 pyodide_init(void) {
+    lib_init();
     hiwire_init();
     js2python_init();
     pyproxy_init();

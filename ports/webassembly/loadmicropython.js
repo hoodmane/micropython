@@ -32,31 +32,44 @@ async function loadMicroPython(options) {
   _createMicropythonModule(Module);
   await moduleLoaded;
   Module._mp_js_init(heapsize);
-  function pyimport(name) {
+  function bootstrap_pyimport(name) {
     const nameid = Module.hiwire.new_value(name);
     const proxy_id = Module._pyimport(nameid);
     Module.hiwire.decref(nameid);
     Module.api.throw_if_error();
     return Module.hiwire.pop_value(proxy_id);
   }
-  const main = pyimport("__main__");
+
+  
+  const main = bootstrap_pyimport("__main__");
   const main_dict = main.__dict__;
-  const builtins = pyimport("builtins");
+  const builtins = bootstrap_pyimport("builtins");
   const builtins_dict = builtins.__dict__;
   const globals = wrapPythonGlobals(main_dict, builtins_dict);
   builtins.destroy();
   main.destroy();
+
+
+  const dict = globals.get("dict");
+  const tmp_dict = dict();
+  dict.destroy();
+
   const exec = globals.get("exec");
 
   function runPython(code, { globals, locals } = {}) {
     exec(code, globals, locals);
   }
 
-  const dict = globals.get("dict");
-  const tmp_dict = dict();
-  dict.destroy();
-
   runPython("import sys", { globals: tmp_dict });
+  runPython("sys.path.append('/lib')", { globals: tmp_dict });
+
+  runPython("import os; print(os.listdir('/lib'))")
+
+  const importlib = bootstrap_pyimport("importlib");
+  function pyimport(mod) {
+    return importlib.import_module(mod);
+  }
+
   runPython("def register_js_module(name, mod): sys.modules[name] = mod", {
     globals: tmp_dict,
   });
@@ -79,3 +92,4 @@ async function loadMicroPython(options) {
 
   return public_api;
 }
+globalThis.loadMicroPython = loadMicroPython;

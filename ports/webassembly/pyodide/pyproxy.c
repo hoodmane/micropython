@@ -61,13 +61,18 @@ pyproxy_getflags(mp_obj_t pyobj)
 // Use raw EM_JS for the next five commands. We intend to signal a fatal error
 // if a JavaScript error is thrown.
 
-EM_JS(int, pyproxy_Check, (JsRef x), {
+EM_JS(int, pyproxy_Check_js, (JsRef x), {
   if (x == 0) {
     return false;
   }
   let val = Hiwire.get_value(x);
   return API.isPyProxy(val);
 });
+
+int
+pyproxy_Check(JsRef x) {
+  return pyproxy_Check_js(x);
+}
 
 EM_JS(mp_obj_t, pyproxy_AsPyObject, (JsRef x), {
   if (x == 0) {
@@ -80,7 +85,7 @@ EM_JS(mp_obj_t, pyproxy_AsPyObject, (JsRef x), {
   return Module.PyProxy_getPtr(val);
 });
 
-EM_JS(void, destroy_proxies, (JsRef proxies_id, char* msg_ptr), {
+EM_JS(void, destroy_proxies_js, (JsRef proxies_id, char* msg_ptr), {
   let msg = undefined;
   if (msg_ptr) {
     msg = UTF8ToString(msg_ptr);
@@ -90,6 +95,11 @@ EM_JS(void, destroy_proxies, (JsRef proxies_id, char* msg_ptr), {
     Module.pyproxy_destroy(px, msg, false);
   }
 });
+
+void
+destroy_proxies(JsRef proxies_id, char* msg_ptr) {
+  destroy_proxies_js(proxies_id, msg_ptr);
+}
 
 EM_JS(void, destroy_proxy, (JsRef proxy_id, char* msg_ptr), {
   let px = Module.hiwire.get_value(proxy_id);

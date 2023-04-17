@@ -6,6 +6,7 @@
 #include "py/runtime.h"
 
 #include "hiwire.h"
+#include "pyproxy.h"
 #include "js2python.h"
 #include "python2js.h"
 
@@ -86,6 +87,11 @@ EM_JS(void, console_log, (JsRef x), {
   console.log(Hiwire.get_value(x));
 })
 
+static char* PYPROXY_DESTROYED_AT_END_OF_FUNCTION_CALL =
+  "This borrowed proxy was automatically destroyed at the "
+  "end of a function call. Try using "
+  "create_proxy or create_once_callable.";
+
 STATIC mp_obj_t
 JsMethod_call(mp_obj_t self_in,
               size_t n_args,
@@ -108,6 +114,7 @@ JsMethod_call(mp_obj_t self_in,
     nlr_pop();
   }
   
+  destroy_proxies(proxies, PYPROXY_DESTROYED_AT_END_OF_FUNCTION_CALL);
   hiwire_CLEAR(proxies);
   hiwire_CLEAR(idargs);
   hiwire_CLEAR(idresult);
@@ -135,7 +142,13 @@ STATIC void JsProxy_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
               MP_ERROR_TEXT("'%s' object has no attribute '%q'"),
               mp_obj_get_type_str(self_in), attr);
         }
-        dest[0] = js2python(jsvalue);
+        mp_obj_t pyresult;
+        if (!pyproxy_Check(jsvalue) && hiwire_is_function(jsvalue)) {
+          pyresult = JsProxy_new_with_this(jsvalue, self->ref);
+        } else {
+          pyresult = js2python(jsvalue);
+        }
+        dest[0] = pyresult;
     } else if (dest[1] == MP_OBJ_NULL) {
         // Delete
         JsObject_DeleteString(self->ref, qstr_str(attr));

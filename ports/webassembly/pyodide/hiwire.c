@@ -658,11 +658,16 @@ EM_JS_BOOL(bool, hiwire_get_bool, (JsRef idobj), {
   // clang-format on
 });
 
-EM_JS_BOOL(bool, hiwire_is_function, (JsRef idobj), {
+EM_JS_BOOL(bool, hiwire_is_function_js, (JsRef idobj), {
   // clang-format off
   return typeof Hiwire.get_value(idobj) === 'function';
   // clang-format on
 });
+
+bool
+hiwire_is_function(JsRef idobj) {
+  return hiwire_is_function_js(idobj);
+}
 
 EM_JS_BOOL(bool, hiwire_is_generator, (JsRef idobj), {
   // clang-format off

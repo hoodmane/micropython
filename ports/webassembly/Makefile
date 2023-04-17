@@ -37,6 +37,7 @@ SRC_C = \
 	pyodide/pyodide_init.c \
 	pyodide/pyproxy.c \
 	pyodide/python2js.c \
+	pyodide/_pyodide_core.c \
 
 
 SRC_QSTR += $(SRC_C) $(SRC_SHARED)
@@ -61,19 +62,24 @@ JSFLAGS += -s EXPORTED_FUNCTIONS="\
 	_malloc,\
 	_free"
 
-JSFLAGS += -s EXPORTED_RUNTIME_METHODS="['stringToNewUTF8', 'FS']"
+JSFLAGS += -s EXPORTED_RUNTIME_METHODS="['stringToNewUTF8', 'FS', 'PATH', 'PATH_FS']"
 JSFLAGS += -s --memory-init-file 0
 JSFLAGS += --js-library library.js
 JSFLAGS += -s MODULARIZE -s EXPORT_NAME=_createMicropythonModule
-JSFLAGS += --pre-js pyodide/pre.js --pre-js pyodide/error_handling.js
+JSFLAGS += --pre-js pyodide/pre.js 
+JSFLAGS += --pre-js pyodide/error_handling.js
+JSFLAGS += --pre-js $(BUILD)/pylib.js
 
 all: $(BUILD)/micropython.js
 
-$(BUILD)/micropython.js: $(OBJ) library.js loadmicropython.js pyodide/pre.js pyodide/error_handling.js
+$(BUILD)/micropython.js: $(OBJ) library.js loadmicropython.js pyodide/pre.js pyodide/error_handling.js pylib.js
 	echo $(OBJ)
 	$(ECHO) "LINK $(BUILD)/micropython.js"
 	$(Q)emcc $(LDFLAGS) -o $(BUILD)/micropython.js $(OBJ) $(JSFLAGS)
 	cat loadmicropython.js >> $@
+
+$(BUILD)/pylib.js: lib/*
+	node pylibManifest.mjs
 
 min: $(BUILD)/micropython.js
 	uglifyjs $< -c -o $(BUILD)/micropython.min.js
