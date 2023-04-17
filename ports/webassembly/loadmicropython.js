@@ -47,9 +47,23 @@ async function loadMicroPython(options) {
     builtins.destroy();
     main.destroy();
     const exec = globals.get("exec");
+    
+    function runPython(code, {globals, locals} = {}) {
+        exec(code, globals, locals);
+    }
 
-    function runPython(code) {
-        exec(code);
+    const dict = globals.get("dict");
+    const tmp_dict = dict();
+    dict.destroy();
+
+    runPython('import sys', {globals: tmp_dict});
+    runPython('def register_js_module(name, mod): sys.modules.update({name: mod})', {globals: tmp_dict});
+    const register_js_module = tmp_dict.get("register_js_module");
+    tmp_dict.destroy();
+    
+
+    function registerJsModule(name, mod) {
+        register_js_module(name, mod);
     }
 
     return {
@@ -57,7 +71,7 @@ async function loadMicroPython(options) {
         FS : Module.FS,
         runPython,
         pyimport,
-        globals
-        // registerJsModule
+        globals,
+        registerJsModule
     };
 }
