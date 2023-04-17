@@ -35,6 +35,7 @@ SRC_C = \
 	js2python.c \
 	python2js.c \
 	pyproxy.c \
+	jsproxy.c \
 	error_handling.c \
 
 SRC_QSTR += $(SRC_C) $(SRC_SHARED)

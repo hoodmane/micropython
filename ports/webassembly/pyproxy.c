@@ -244,6 +244,10 @@ _pyproxy_getitem(mp_obj_t pyobj, JsRef idkey)
     nlr_pop();
     return result;
   } else {
+    if (mp_obj_is_subclass_fast(MP_OBJ_FROM_PTR(((mp_obj_base_t *)nlr.ret_val)->type), MP_OBJ_FROM_PTR(&mp_type_KeyError))) {
+      // Suppress KeyError and return undefined.
+      return Js_undefined;
+    } 
     record_traceback(nlr.ret_val);
     return NULL;
   }
@@ -952,6 +956,7 @@ pyproxy_decref(mp_obj_t obj) {
     tuple[1] = mp_obj_new_int(refcnt);
     mp_obj_t val = mp_obj_new_int(refcnt);
     mp_obj_dict_store(proxy_dict, objkey, val);
+    nlr_pop();
   } else {
     printf("Internal error in pyproxy_decref:\n");
     mp_obj_print_exception(&mp_plat_print, MP_OBJ_FROM_PTR(nlr.ret_val));

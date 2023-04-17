@@ -1,11 +1,11 @@
+#include <emscripten.h>
+
 #include "hiwire.h"
 #include "js2python.h"
 #include "jsmemops.h"
-// #include "jsproxy.h"
-// #include "pyproxy.h"
-#include "python2js.h"
-#include <emscripten.h>
+#include "jsproxy.h"
 #include "pyproxy.h"
+#include "python2js.h"
 
 #include "py/objint.h"
 #include "py/objstr.h"
@@ -122,9 +122,9 @@ _python2js_immutable(mp_obj_t x)
 static inline JsRef
 _python2js_proxy(mp_obj_t x)
 {
-  // if (JsProxy_Check(x)) {
-  //   return JsProxy_AsJs(x);
-  // }
+  if (JsProxy_Check(x)) {
+    return JsProxy_AsJs(x);
+  }
   return Js_novalue;
 }
 
@@ -139,14 +139,12 @@ python2js_inner(mp_obj_t x, JsRef proxies, bool track_proxies)
   RETURN_IF_HAS_VALUE(_python2js_immutable(x));
   RETURN_IF_HAS_VALUE(_python2js_proxy(x));
   if (track_proxies && proxies == NULL) {
-    // PyErr_SetString(conversion_error, "No conversion known for x.");
-    // FAIL();
+    mp_raise_msg(&mp_type_TypeError, MP_ERROR_TEXT("No conversion known for x."));
   }
   JsRef proxy = pyproxy_new(x);
-  // FAIL_IF_NULL(proxy);
-  // if (track_proxies) {
-  //   JsArray_Push_unchecked(proxies, proxy);
-  // }
+  if (track_proxies) {
+    JsArray_Push_unchecked(proxies, proxy);
+  }
   return proxy;
 // finally:
 //   if (PyErr_Occurred()) {

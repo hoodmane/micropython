@@ -50,7 +50,7 @@ EM_JS_REF(mp_obj_t, js2python_js, (JsRef id), {
     // clang-format on
     return result;
   }
-  return _JsProxy_create(id);
+  return _JsProxy_new(id);
 })
 
 mp_obj_t

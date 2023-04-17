@@ -1,42 +1,37 @@
-/*
- * This file is part of the MicroPython project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2017, 2018 Rami Ali
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+/**
+ * A proxy around globals that falls back to checking for a builtin if has or
+ * get fails to find a global with the given key. Note that this proxy is
+ * transparent to js2python: it won't notice that this wrapper exists at all and
+ * will translate this proxy to the globals dictionary.
+ * @private
  */
+function wrapPythonGlobals(globals_dict, builtins_dict) {
+    return new Proxy(globals_dict, {
+      get(target, symbol) {
+        if (symbol === "get") {
+          return (key) => {
+            let result = target.get(key);
+            if (result === undefined) {
+              result = builtins_dict.get(key);
+            }
+            return result;
+          };
+        }
+        if (symbol === "has") {
+          return (key) => target.has(key) || builtins_dict.has(key);
+        }
+        return Reflect.get(target, symbol);
+      },
+    });
+  }
 
 async function loadMicroPython(options) {
     const {heapsize} = Object.assign({heapsize: 64 *1024},  options);
     const Module = {};
-    Module.handle_js_error = (e) => {throw e};
     const moduleLoaded = new Promise((r) => (Module.postRun = r));
     _createMicropythonModule(Module);
     await moduleLoaded;
     Module._mp_js_init(heapsize);
-    function runPython(code) {
-        const ptr = Module.stringToNewUTF8(code);
-        Module._mp_js_do_str(ptr);
-        Module._free(ptr);
-    }
     function pyimport(name) {
         const nameid = Module.hiwire.new_value(name);
         const proxy_id = Module._pyimport(nameid);
@@ -45,8 +40,17 @@ async function loadMicroPython(options) {
         return Module.hiwire.pop_value(proxy_id);
     }
     const main = pyimport("__main__");
-    const globals = main.__dict__;
+    const main_dict = main.__dict__;
+    const builtins = pyimport("builtins");
+    const builtins_dict = builtins.__dict__;
+    const globals = wrapPythonGlobals(main_dict, builtins_dict);
+    builtins.destroy();
     main.destroy();
+    const exec = globals.get("exec");
+
+    function runPython(code) {
+        exec(code);
+    }
 
     return {
         _module: Module,

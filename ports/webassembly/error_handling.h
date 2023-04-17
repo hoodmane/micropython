@@ -97,8 +97,7 @@ console_error_obj(JsRef obj);
       body /* <== body of func */                                              \
     catch (e) {                                                                \
         LOG_EM_JS_ERROR(func_name, e);                                         \
-        Module.handle_js_error(e);                                             \
-        return 0;                                                              \
+        API.handle_js_error(e);                                             \
     }                                                                          \
     throw new Error(                                                           \
       "Assertion error: control reached end of function without return"        \
@@ -111,8 +110,7 @@ console_error_obj(JsRef obj);
       body /* <== body of func */                                              \
     catch (e) {                                                                \
         LOG_EM_JS_ERROR(func_name, e);                                         \
-        Module.handle_js_error(e);                                             \
-        return -1;                                                             \
+        API.handle_js_error(e);                                             \
     }                                                                          \
     return 0;  /* some of these were void */                                   \
   })

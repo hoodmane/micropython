@@ -99,11 +99,6 @@ int mp_js_process_char(int c) {
     return pyexec_event_repl_process_char(c);
 }
 
-EMSCRIPTEN_KEEPALIVE void print_an_obj(mp_obj_t obj) {
-    mp_obj_print(obj, PRINT_REPR);
-    printf("\n");
-}
-
 int hiwire_init(void);
 int js2python_init(void);
 int pyproxy_init(void);
