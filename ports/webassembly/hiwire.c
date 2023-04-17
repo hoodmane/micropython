@@ -291,7 +291,7 @@ int hiwire_init(void) {
   return hiwire_init_js();
 }
 
-EM_JS(JsRef, hiwire_incref, (JsRef idval), {
+EM_JS(JsRef, hiwire_incref_js, (JsRef idval), {
   if (idval & 1) {
     // least significant bit unset ==> idval is a singleton.
     // We don't reference count singletons.
@@ -299,6 +299,11 @@ EM_JS(JsRef, hiwire_incref, (JsRef idval), {
   }
   return idval;
 });
+
+JsRef
+hiwire_incref(JsRef idval) {
+  return hiwire_incref_js(idval);
+}
 
 // clang-format off
 EM_JS(void, hiwire_decref, (JsRef idval), {
@@ -320,7 +325,6 @@ hiwire_int(int val) {
 // clang-format off
 EM_JS_REF(JsRef,
 hiwire_int_from_digits_js, (const unsigned int* digits, size_t ndigits), {
-  console.log(HEAP32.slice(digits/4, digits/4 + ndigits));
   let result = BigInt(0);
   for (let i = 0; i < ndigits; i++) {
     result += BigInt(DEREF_U32(digits, i)) << BigInt(32 * i);
@@ -410,9 +414,10 @@ EM_JS_REF(JsRef, hiwire_call_OneArg, (JsRef idfunc, JsRef idarg), {
 });
 
 // clang-format off
-EM_JS_REF(JsRef,
-          hiwire_call_bound,
-          (JsRef idfunc, JsRef idthis, JsRef idargs),
+EM_JS_REF(
+JsRef,
+hiwire_call_bound_js,
+(JsRef idfunc, JsRef idthis, JsRef idargs),
 {
   let func = Hiwire.get_value(idfunc);
   let this_;
@@ -425,6 +430,11 @@ EM_JS_REF(JsRef,
   return Hiwire.new_value(func.apply(this_, args));
 });
 // clang-format on
+
+JsRef
+hiwire_call_bound(JsRef idfunc, JsRef idthis, JsRef idargs) {
+  return hiwire_call_bound_js(idfunc, idthis, idargs);
+}
 
 EM_JS_BOOL(bool, hiwire_HasMethod, (JsRef obj_id, JsRef name), {
   // clang-format off
@@ -440,9 +450,10 @@ hiwire_HasMethodId(JsRef obj, Js_Identifier* name)
 }
 
 // clang-format off
-EM_JS_REF(JsRef,
-          hiwire_CallMethodString,
-          (JsRef idobj, const char* name, JsRef idargs),
+EM_JS_REF(
+JsRef,
+hiwire_CallMethodString,
+(JsRef idobj, const char* name, JsRef idargs),
 {
   let jsobj = Hiwire.get_value(idobj);
   let jsname = UTF8ToString(name);
@@ -694,9 +705,14 @@ EM_JS_REF(JsRef, hiwire_resolve_promise, (JsRef idobj), {
   // clang-format on
 });
 
-EM_JS_REF(JsRef, hiwire_to_string, (JsRef idobj), {
+EM_JS_REF(JsRef, hiwire_to_string_js, (JsRef idobj), {
   return Hiwire.new_value(Hiwire.get_value(idobj).toString());
 });
+
+JsRef
+hiwire_to_string(JsRef idobj) {
+  return hiwire_to_string_js(idobj);
+}
 
 EM_JS(JsRef, hiwire_typeof, (JsRef idobj), {
   return Hiwire.new_value(typeof Hiwire.get_value(idobj));
@@ -853,15 +869,19 @@ JsArray_Push(JsRef idarr, JsRef idval) {
   return JsArray_Push_js(idarr, idval);
 }
 
-EM_JS(int, JsArray_Push_unchecked, (JsRef idarr, JsRef idval), {
+EM_JS(int, JsArray_Push_unchecked_js, (JsRef idarr, JsRef idval), {
   const arr = Hiwire.get_value(idarr);
   arr.push(Hiwire.get_value(idval));
   return arr.length - 1;
 });
 
+int
+JsArray_Push_unchecked(JsRef idarr, JsRef idval) {
+  return JsArray_Push_unchecked_js(idarr, idval);
+}
+
 EM_JS_REF(JsRef, JsArray_Get_js, (JsRef idobj, int idx), {
   let obj = Hiwire.get_value(idobj);
-  console.warn({obj, idobj});
   let result = obj[idx];
   // clang-format off
   if (result === undefined && !(idx in obj)) {
@@ -951,38 +971,59 @@ EM_JS_NUM(errcode, JsArray_Clear, (JsRef idobj), {
 // ==================== JsObject API  ====================
 
 // clang-format off
-EM_JS_REF(JsRef, JsObject_New, (), {
+EM_JS_REF(JsRef, JsObject_New_js, (), {
   return Hiwire.new_value({});
 });
+
+JsRef
+JsObject_New(void) {
+  return JsObject_New_js();
+}
+
 // clang-format on
 
 
-EM_JS_REF(JsRef, JsObject_GetString, (JsRef idobj, const char* ptrkey), {
+EM_JS_REF(JsRef, JsObject_GetString_js, (JsRef idobj, const char* ptrkey), {
   let jsobj = Hiwire.get_value(idobj);
-  let jskey = normalizeReservedWords("get", UTF8ToString(ptrkey));
+  let jskey = UTF8ToString(ptrkey);
   if (jskey in jsobj) {
     return Hiwire.new_value(jsobj[jskey]);
   }
   return ERROR_REF;
 });
 
+JsRef
+JsObject_GetString(JsRef idobj, const char* ptrkey){
+  return JsObject_GetString_js(idobj, ptrkey);
+}
+
 // clang-format off
 EM_JS_NUM(errcode,
-JsObject_SetString,
+JsObject_SetString_js,
 (JsRef idobj, const char* ptrkey, JsRef idval),
 {
   let jsobj = Hiwire.get_value(idobj);
-  let jskey = normalizeReservedWords("set", UTF8ToString(ptrkey));
+  let jskey = UTF8ToString(ptrkey);
   let jsval = Hiwire.get_value(idval);
   jsobj[jskey] = jsval;
 });
 // clang-format on
 
-EM_JS_NUM(errcode, JsObject_DeleteString, (JsRef idobj, const char* ptrkey), {
+errcode
+JsObject_SetString(JsRef idobj, const char* ptrkey, JsRef idval){
+  return JsObject_SetString_js(idobj, ptrkey, idval);
+}
+
+EM_JS_NUM(errcode, JsObject_DeleteString_js, (JsRef idobj, const char* ptrkey), {
   let jsobj = Hiwire.get_value(idobj);
-  let jskey = normalizeReservedWords("delete", UTF8ToString(ptrkey));
+  let jskey = UTF8ToString(ptrkey);
   delete jsobj[jskey];
 });
+
+errcode
+JsObject_DeleteString(JsRef idobj, const char* ptrkey){
+  return JsObject_DeleteString_js(idobj, ptrkey);
+}
 
 EM_JS_REF(JsRef, JsObject_Dir, (JsRef idobj), {
   let jsobj = Hiwire.get_value(idobj);
@@ -995,10 +1036,7 @@ EM_JS_REF(JsRef, JsObject_Dir, (JsRef idobj), {
         let c = s.charCodeAt(0);
         return c < 48 || c > 57; /* Filter out integer array indices */
       }
-    )
-    // If the word is a reserved word followed by 0 or more underscores, add an
-    // extra underscore to reverse the transformation applied by normalizeReservedWords.
-    .map(word => isReservedWord(word.replace(/_*$/, "")) ? word + "_" : word));
+    ));
     // clang-format on
   } while (jsobj = Object.getPrototypeOf(jsobj));
   return Hiwire.new_value(result);

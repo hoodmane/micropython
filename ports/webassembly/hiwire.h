@@ -6,7 +6,7 @@
 #include "stdint.h"
 #include <stdio.h>
 #include "bits/alltypes.h"
-typedef int ssize_t;
+typedef long ssize_t;
 
 #undef false
 #undef true
@@ -448,7 +448,7 @@ JsArray_New();
 /**
  * Push a value to the end of a JavaScript array.
  */
-errcode WARN_UNUSED
+errcode
 JsArray_Push(JsRef idobj, JsRef idval);
 
 /**
@@ -514,13 +514,13 @@ JsObject_GetString(JsRef idobj, const char* ptrname);
 /**
  * Set an object member by string.
  */
-errcode WARN_UNUSED
+errcode
 JsObject_SetString(JsRef idobj, const char* ptrname, JsRef idval);
 
 /**
  * Delete an object member by string.
  */
-errcode WARN_UNUSED
+errcode
 JsObject_DeleteString(JsRef idobj, const char* ptrname);
 
 /**
@@ -567,7 +567,7 @@ JsMap_New();
 /**
  * Does map.set(key, value).
  */
-errcode WARN_UNUSED
+errcode
 JsMap_Set(JsRef mapid, JsRef keyid, JsRef valueid);
 
 // ==================== JsSet API  ====================
@@ -581,7 +581,7 @@ JsSet_New();
 /**
  * Does set.add(key).
  */
-errcode WARN_UNUSED
+errcode
 JsSet_Add(JsRef mapid, JsRef keyid);
 
 #endif /* HIWIRE_H */
