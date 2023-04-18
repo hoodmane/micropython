@@ -2,8 +2,8 @@
 // 1. esbuild.mjs
 // 2. Jest setup.ts
 
-import { join } from 'path';
-import { opendir, readFile, writeFile } from 'fs/promises';
+import { join } from "path";
+import { opendir, readFile, writeFile } from "fs/promises";
 
 /**
  * List out everything in a directory, but skip __pycache__ directory. Used to
@@ -19,35 +19,37 @@ import { opendir, readFile, writeFile } from 'fs/promises';
  * @returns {dirs: string[], files: [string, string][]}
  */
 export async function directoryManifest(dir) {
-    const result = { dirs: [], files: [] };
-    await _directoryManifestHelper(dir, '.', result);
-    return result;
+  const result = { dirs: [], files: [] };
+  await _directoryManifestHelper(dir, ".", result);
+  return result;
 }
 
 /**
  * Recursive helper function for directoryManifest
  */
 async function _directoryManifestHelper(root, dir, result) {
-    const dirObj = await opendir(join(root, dir));
-    for await (const d of dirObj) {
-        const entry = join(dir, d.name);
-        if (d.isDirectory()) {
-            if (d.name === '__pycache__') {
-                continue;
-            }
-            result.dirs.push(entry);
-            await _directoryManifestHelper(root, entry, result);
-        } else if (d.isFile()) {
-            result.files.push([entry, await readFile(join(root, entry), { encoding: 'utf-8' })]);
-        }
+  const dirObj = await opendir(join(root, dir));
+  for await (const d of dirObj) {
+    const entry = join(dir, d.name);
+    if (d.isDirectory()) {
+      if (d.name === "__pycache__") {
+        continue;
+      }
+      result.dirs.push(entry);
+      await _directoryManifestHelper(root, entry, result);
+    } else if (d.isFile()) {
+      result.files.push([
+        entry,
+        await readFile(join(root, entry), { encoding: "utf-8" }),
+      ]);
     }
+  }
 }
 
-
 async function main() {
-    const manifest_obj = await directoryManifest("lib");
-    const manifest_str = JSON.stringify(manifest_obj);
-    const contents = `const pylibManifest = ${manifest_str};\n`
-    await writeFile("build/pylib.js", contents);
+  const manifest_obj = await directoryManifest("lib");
+  const manifest_str = JSON.stringify(manifest_obj);
+  const contents = `const pylibManifest = ${manifest_str};\n`;
+  await writeFile("build/pylib.js", contents);
 }
 main();
