@@ -208,6 +208,10 @@ _pyproxy_getattr(mp_obj_t pyobj, JsRef idkey, JsRef proxyCache)
     nlr_pop();
     return result;
   } else {
+    if (mp_obj_is_subclass_fast(MP_OBJ_FROM_PTR(((mp_obj_base_t *)nlr.ret_val)->type), MP_OBJ_FROM_PTR(&mp_type_AttributeError))) {
+      // Suppress KeyError and return undefined.
+      return Js_undefined;
+    }
     record_traceback(nlr.ret_val);
     return NULL;
   }
