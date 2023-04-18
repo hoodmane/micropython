@@ -136,6 +136,10 @@ STATIC void JsProxy_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
             // Special case to handle construction of JS objects.
             return;
         }
+        if (attr == MP_QSTR_js_id) {
+          dest[0] = mp_obj_new_int_from_uint((mp_uint_t)(self->ref));
+          return ;
+        }
         jsvalue = JsObject_GetString(self->ref, qstr_str(attr));
         if(jsvalue == NULL) {
           mp_raise_msg_varg(&mp_type_AttributeError,
