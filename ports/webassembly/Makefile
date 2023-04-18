@@ -72,7 +72,7 @@ JSFLAGS += --pre-js $(BUILD)/pylib.js
 
 all: $(BUILD)/micropython.js
 
-$(BUILD)/micropython.js: $(OBJ) library.js loadmicropython.js pyodide/pre.js pyodide/error_handling.js pylib.js
+$(BUILD)/micropython.js: $(OBJ) library.js loadmicropython.js pyodide/pre.js pyodide/error_handling.js $(BUILD)/pylib.js
 	echo $(OBJ)
 	$(ECHO) "LINK $(BUILD)/micropython.js"
 	$(Q)emcc $(LDFLAGS) -o $(BUILD)/micropython.js $(OBJ) $(JSFLAGS)

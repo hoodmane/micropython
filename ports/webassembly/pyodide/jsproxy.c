@@ -155,7 +155,7 @@ STATIC void JsProxy_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
         dest[0] = MP_OBJ_NULL;
     } else {
         // Store
-        jsvalue = js2python(dest[1]);
+        jsvalue = python2js(dest[1]);
         JsObject_SetString(self->ref, qstr_str(attr), jsvalue);
         dest[0] = MP_OBJ_NULL;
     }

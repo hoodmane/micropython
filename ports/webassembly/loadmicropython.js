@@ -63,8 +63,6 @@ async function loadMicroPython(options) {
   runPython("import sys", { globals: tmp_dict });
   runPython("sys.path.append('/lib')", { globals: tmp_dict });
 
-  runPython("import os; print(os.listdir('/lib'))")
-
   const importlib = bootstrap_pyimport("importlib");
   function pyimport(mod) {
     return importlib.import_module(mod);
