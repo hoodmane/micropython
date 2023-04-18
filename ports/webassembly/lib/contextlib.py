@@ -3,12 +3,20 @@ import os
 import sys
 from collections import deque
 
-__all__ = ["asynccontextmanager", "contextmanager", "closing", "nullcontext",
-           "AsyncExitStack", "ContextDecorator", "ExitStack",
-           "redirect_stdout", "redirect_stderr", "suppress", "aclosing",
-           "chdir"]
-
-
+__all__ = [
+    "asynccontextmanager",
+    "contextmanager",
+    "closing",
+    "nullcontext",
+    "AsyncExitStack",
+    "ContextDecorator",
+    "ExitStack",
+    "redirect_stdout",
+    "redirect_stderr",
+    "suppress",
+    "aclosing",
+    "chdir",
+]
 
 
 class ContextDecorator(object):
@@ -31,6 +39,7 @@ class ContextDecorator(object):
         def inner(*args, **kwds):
             with self._recreate_cm():
                 return func(*args, **kwds)
+
         return inner
 
 
@@ -38,8 +47,7 @@ class AsyncContextDecorator(object):
     "A base class or mixin that enables async context managers to work as decorators."
 
     def _recreate_cm(self):
-        """Return a recreated instance of self.
-        """
+        """Return a recreated instance of self."""
         return self
 
     def __call__(self, func):
@@ -47,6 +55,7 @@ class AsyncContextDecorator(object):
         async def inner(*args, **kwds):
             async with self._recreate_cm():
                 return await func(*args, **kwds)
+
         return inner
 
 
@@ -120,10 +129,7 @@ class _GeneratorContextManager(
                 # have this behavior). But do this only if the exception wrapped
                 # by the RuntimeError is actually Stop(Async)Iteration (see
                 # issue29692).
-                if (
-                    isinstance(value, StopIteration)
-                    and exc.__cause__ is value
-                ):
+                if isinstance(value, StopIteration) and exc.__cause__ is value:
                     exc.__traceback__ = traceback
                     return False
                 raise
@@ -139,6 +145,7 @@ class _GeneratorContextManager(
                 exc.__traceback__ = traceback
                 return False
             raise RuntimeError("generator didn't stop after throw()")
+
 
 class _AsyncGeneratorContextManager(
     _GeneratorContextManagerBase,
@@ -234,6 +241,7 @@ def contextmanager(func):
     # @wraps(func)
     def helper(*args, **kwds):
         return _GeneratorContextManager(func, args, kwds)
+
     return helper
 
 
@@ -267,6 +275,7 @@ def asynccontextmanager(func):
     # @wraps(func)
     def helper(*args, **kwds):
         return _AsyncGeneratorContextManager(func, args, kwds)
+
     return helper
 
 
@@ -287,10 +296,13 @@ class closing:
             f.close()
 
     """
+
     def __init__(self, thing):
         self.thing = thing
+
     def __enter__(self):
         return self.thing
+
     def __exit__(self, *exc_info):
         self.thing.close()
 
@@ -313,10 +325,13 @@ class aclosing:
             await agen.aclose()
 
     """
+
     def __init__(self, thing):
         self.thing = thing
+
     async def __aenter__(self):
         return self.thing
+
     async def __aexit__(self, *exc_info):
         await self.thing.aclose()
 
@@ -342,14 +357,14 @@ class _RedirectStream:
 class redirect_stdout(_RedirectStream):
     """Context manager for temporarily redirecting stdout to another file.
 
-        # How to send help() to stderr
-        with redirect_stdout(sys.stderr):
-            help(dir)
+    # How to send help() to stderr
+    with redirect_stdout(sys.stderr):
+        help(dir)
 
-        # How to write help() to a file
-        with open('help.txt', 'w') as f:
-            with redirect_stdout(f):
-                help(pow)
+    # How to write help() to a file
+    with open('help.txt', 'w') as f:
+        with redirect_stdout(f):
+            help(pow)
     """
 
     _stream = "stdout"
@@ -402,6 +417,7 @@ class _BaseExitStack:
     def _create_cb_wrapper(callback, *args, **kwds):
         def _exit_wrapper(exc_type, exc, tb):
             callback(*args, **kwds)
+
         return _exit_wrapper
 
     def __init__(self):
@@ -447,7 +463,9 @@ class _BaseExitStack:
             _enter = cls.__enter__
             _exit = cls.__exit__
         except AttributeError:
-            raise TypeError(f"'{cls.__module__}.{cls.__qualname__}' object does not support the context manager protocol") from None
+            raise TypeError(
+                f"'{cls.__module__}.{cls.__qualname__}' object does not support the context manager protocol"
+            ) from None
         result = _enter(cm)
         self._push_cm_exit(cm, _exit)
         return result
@@ -495,6 +513,7 @@ class ExitStack(_BaseExitStack):
         # We manipulate the exception state so it behaves as though
         # we were actually nesting multiple with statements
         frame_exc = sys.exc_info()[1]
+
         def _fix_exception_context(new_exc, old_exc):
             # Context may not be correct, so find the end of the chain
             while 1:
@@ -565,6 +584,7 @@ class AsyncExitStack(_BaseExitStack):
     def _create_async_cb_wrapper(callback, *args, **kwds):
         async def _exit_wrapper(exc_type, exc, tb):
             await callback(*args, **kwds)
+
         return _exit_wrapper
 
     async def enter_async_context(self, cm):
@@ -578,7 +598,9 @@ class AsyncExitStack(_BaseExitStack):
             _enter = cls.__aenter__
             _exit = cls.__aexit__
         except AttributeError:
-            raise TypeError(f"'{cls.__module__}.{cls.__qualname__}' object does not support the asynchronous context manager protocol") from None
+            raise TypeError(
+                f"'{cls.__module__}.{cls.__qualname__}' object does not support the asynchronous context manager protocol"
+            ) from None
         result = await _enter(cm)
         self._push_async_cm_exit(cm, _exit)
         return result
@@ -633,6 +655,7 @@ class AsyncExitStack(_BaseExitStack):
         # We manipulate the exception state so it behaves as though
         # we were actually nesting multiple with statements
         frame_exc = sys.exc_info()[1]
+
         def _fix_exception_context(new_exc, old_exc):
             # Context may not be correct, so find the end of the chain
             while 1:

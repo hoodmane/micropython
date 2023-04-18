@@ -1,6 +1,6 @@
 import re as _re
 
-__all__ = ['escape', 'unescape']
+__all__ = ["escape", "unescape"]
 
 
 def escape(s, quote=True):
@@ -10,10 +10,10 @@ def escape(s, quote=True):
     characters, both double quote (") and single quote (') characters are also
     translated.
     """
-    s = s.replace("&", "&amp;") # Must be done first!
+    s = s.replace("&", "&amp;")  # Must be done first!
     s = s.replace("<", "&lt;")
     s = s.replace(">", "&gt;")
     if quote:
         s = s.replace('"', "&quot;")
-        s = s.replace('\'', "&#x27;")
+        s = s.replace("'", "&#x27;")
     return s

@@ -1,4 +1,3 @@
-
 from . import create_once_callable, create_proxy
 
 from js import clearInterval, clearTimeout, setInterval, setTimeout
@@ -20,9 +19,7 @@ class DUMMY_DESTROYABLE:
 EVENT_LISTENERS = {}
 
 
-def add_event_listener(
-    elt, event: str, listener
-) -> None:
+def add_event_listener(elt, event: str, listener) -> None:
     """Wrapper for JavaScript's
     :js:meth:`~EventTarget.addEventListener` which automatically manages the lifetime of a
     JsProxy corresponding to the ``listener`` parameter.
@@ -32,9 +29,7 @@ def add_event_listener(
     elt.addEventListener(event, proxy)
 
 
-def remove_event_listener(
-    elt, event: str, listener
-) -> None:
+def remove_event_listener(elt, event: str, listener) -> None:
     """Wrapper for JavaScript's
     :js:meth:`~EventTarget.removeEventListener` which automatically manages the
     lifetime of a JsProxy corresponding to the ``listener`` parameter.
@@ -76,7 +71,7 @@ def clear_timeout(timeout_retval) -> None:
     TIMEOUTS.pop(id, DUMMY_DESTROYABLE).destroy()
 
 
-INTERVAL_CALLBACKS= {}
+INTERVAL_CALLBACKS = {}
 
 
 def set_interval(callback, interval):
