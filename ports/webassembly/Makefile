@@ -76,6 +76,7 @@ $(BUILD)/micropython.js: $(OBJ) library.js loadmicropython.js pyodide/pre.js pyo
 	echo $(OBJ)
 	$(ECHO) "LINK $(BUILD)/micropython.js"
 	$(Q)emcc $(LDFLAGS) -o $(BUILD)/micropython.js $(OBJ) $(JSFLAGS)
+	cat error-stack-parser.min.js >> $@
 	cat loadmicropython.js >> $@
 
 $(BUILD)/pylib.js: lib/*
