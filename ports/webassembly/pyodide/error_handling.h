@@ -69,6 +69,7 @@ console_error_obj(JsRef obj);
  */
 
 // clang-format off
+#define DEBUG_F 1
 #ifdef DEBUG_F
 // Yes, the "do {} while(0)" trick solves the same problem in the same way in
 // javascript!

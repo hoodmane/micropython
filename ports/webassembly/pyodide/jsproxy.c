@@ -5,6 +5,7 @@
 #include "py/objmodule.h"
 #include "py/runtime.h"
 
+#include "jsmemops.h"
 #include "hiwire.h"
 #include "pyproxy.h"
 #include "js2python.h"
@@ -114,7 +115,9 @@ JsMethod_call(mp_obj_t self_in,
     nlr_pop();
   }
   
-  destroy_proxies(proxies, PYPROXY_DESTROYED_AT_END_OF_FUNCTION_CALL);
+  if(proxies != NULL) {
+    destroy_proxies(proxies, PYPROXY_DESTROYED_AT_END_OF_FUNCTION_CALL);
+  }
   hiwire_CLEAR(proxies);
   hiwire_CLEAR(idargs);
   hiwire_CLEAR(idresult);
@@ -166,6 +169,50 @@ STATIC void JsProxy_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
     hiwire_CLEAR(jsvalue);
 }
 
+typedef struct _jsobj_it_t {
+    mp_obj_base_t base;
+    mp_fun_1_t iternext;
+    JsRef ref;
+} JsProxy_it_t;
+
+
+EM_JS_REF(JsRef, JsProxy_GetIter_js, (JsRef idobj), {
+  let jsobj = Hiwire.get_value(idobj);
+  return Hiwire.new_value(jsobj[Symbol.iterator]());
+});
+
+EM_JS_NUM(void, JsProxy_iternext_js, (JsRef idit, bool* done_ptr, JsRef* value_ptr), {
+  let it = Hiwire.get_value(idit);
+  let {done, value} = it.next();
+  DEREF_U8(done_ptr, 0) = done;
+  DEREF_U32(value_ptr, 0) = Hiwire.new_value(value);
+})
+
+STATIC mp_obj_t JsProxy_it_iternext(mp_obj_t self_in) {
+  JsProxy_it_t *self = MP_OBJ_TO_PTR(self_in);
+  bool done;
+  JsRef value;
+  JsProxy_iternext_js(self->ref, &done, &value);
+  mp_obj_t result;
+  if(done) {
+    result = MP_OBJ_STOP_ITERATION;
+  } else {
+    result = js2python(value);
+  }
+  hiwire_CLEAR(value);
+  return result;
+}
+
+STATIC mp_obj_t JsProxy_GetIter(mp_obj_t o_in, mp_obj_iter_buf_t *iter_buf) {
+    JsProxy* self = MP_OBJ_TO_PTR(o_in);
+    assert(sizeof(JsProxy_it_t) <= sizeof(mp_obj_iter_buf_t));
+    JsProxy_it_t *o = (JsProxy_it_t *)iter_buf;
+    o->base.type = &mp_type_polymorph_iter;
+    o->iternext = JsProxy_it_iternext;
+    o->ref = JsProxy_GetIter_js(self->ref);
+    return MP_OBJ_FROM_PTR(o);
+}
+
 // STATIC mp_obj_t JsMethod_construct(size_t n, const mp_obj_t *args, mp_map_t *kwargs) {
 //     JsRef ref = JsProxy_get_ref(args[0]);
 //     const char *arg1 = mp_obj_str_get_str(args[1]);
@@ -188,8 +235,8 @@ STATIC MP_DEFINE_CONST_OBJ_TYPE(
   0, //MP_TYPE_FLAG_ITER_IS_GETITER,
   print, JsProxy_print,
   call, JsMethod_call,
-  attr, JsProxy_attr
-  // iter, jsobj_getiter
+  attr, JsProxy_attr,
+  iter, JsProxy_GetIter
 );
 // clang-format on
 

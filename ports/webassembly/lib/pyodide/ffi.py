@@ -1,1 +1,0 @@
-from _pyodide_core import create_proxy
