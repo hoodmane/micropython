@@ -31,9 +31,9 @@ JsProxy_print(const mp_print_t* print, mp_obj_t self_in, mp_print_kind_t kind)
   JsRef jsstr = hiwire_to_string(self->ref);
   mp_obj_t pystr = js2python(jsstr);
   if (kind == PRINT_REPR) {
-    mp_printf(print, "<JsProxy %d: %d>", (int)self->ref, pystr);
+    mp_printf(print, "<JsProxy %d: %s>", (int)self->ref, mp_obj_str_get_str(pystr));
   } else {
-    mp_printf(print, "%d", pystr);
+    mp_printf(print, "%s", mp_obj_str_get_str(pystr));
   }
 }
 
