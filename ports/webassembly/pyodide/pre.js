@@ -7,3 +7,4 @@ API.fatal_error = function (e) {
   throw e;
 };
 Module.api = API;
+const getTypeTag = (x) => Object.prototype.toString.call(x);

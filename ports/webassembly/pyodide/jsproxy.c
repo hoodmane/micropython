@@ -16,7 +16,7 @@
     if(nlr.ret_val) { \
       nlr_raise(MP_OBJ_FROM_PTR(nlr.ret_val)); \
     } \
-  } while(0) 
+  } while(0)
 
 typedef struct _mp_obj_jsobj_t
 {
@@ -114,7 +114,7 @@ JsMethod_call(mp_obj_t self_in,
     result = js2python(idresult);
     nlr_pop();
   }
-  
+
   if(proxies != NULL) {
     destroy_proxies(proxies, PYPROXY_DESTROYED_AT_END_OF_FUNCTION_CALL);
   }
@@ -213,6 +213,118 @@ STATIC mp_obj_t JsProxy_GetIter(mp_obj_t o_in, mp_obj_iter_buf_t *iter_buf) {
     return MP_OBJ_FROM_PTR(o);
 }
 
+#define SUBSCR_LOAD 0
+#define SUBSCR_STORE 1
+#define SUBSCR_DELETE 2
+
+#define SUBSCR_KEY_ERROR 1
+#define SUBSCR_INDEX_ERROR 2
+#define SUBSCR_TYPE_ERROR 3
+
+EM_JS_REF(
+JsRef,
+JsProxy_subscr_js, (JsRef idself, JsRef idkey, JsRef idvalue, int type, int * error), {
+  const obj = Hiwire.get_value(idself);
+  const isArray = Array.isArray(obj);
+  const isTypedArray = ArrayBuffer.isView(obj) && obj.constructor.name !== "DataView";
+  const typeTag = getTypeTag(obj);
+  // I think there are also CSS collections and other DomArrays but whatever
+  const isDomArray = typeTag === "[object HTMLCollection]" || typeTag === "[object NodeList]";
+
+  const array_like = isArray || isTypedArray || isDomArray;
+  const map_like = (!isArray) && ("get" in obj);
+  if(!array_like && !map_like) {
+    DEREF_U32(error, 0) = SUBSCR_TYPE_ERROR;
+    return NULL;
+  }
+
+  let key = Hiwire.get_value(idkey);
+  console.log("key", key);
+  if(array_like && typeof key === "number" && key < 0) {
+    key = obj.length + key;
+    console.log("new_key", key);
+  }
+  if (type === SUBSCR_LOAD) {
+    let result;
+    if(map_like) {
+      result = obj.get(key);
+      if(result !== undefined) {
+        return Hiwire.new_value(result);
+      }
+      // Try to distinguish between undefined and missing:
+      // If the object has a "has" method and it returns false for this key, the
+      // key is missing. Otherwise, assume key present and value was undefined.
+      if (obj.has && typeof obj.has === "function" && obj.has(key)) {
+        return DEREF_U32(_Js_undefined, 0);
+      }
+      // key error
+      DEREF_U32(error, 0) = SUBSCR_KEY_ERROR;
+      return NULL;
+    }
+    if(!(key in obj)) {
+      // key error
+      DEREF_U32(error, 0) = SUBSCR_INDEX_ERROR;
+      return NULL;
+    }
+    return Hiwire.new_value(obj[key]);
+  }
+
+  if(type === SUBSCR_STORE) {
+    const value = Hiwire.get_value(idvalue);
+    if(map_like) {
+      obj.set(key, value);
+    } else {
+      obj[key] = value;
+    }
+    return Js_undefined;
+  }
+  if (type === SUBSCR_DELETE) {
+    if(map_like) {
+      obj.delete(key);
+    } else {
+      delete obj[key];
+    }
+    return Js_undefined;
+  }
+})
+
+
+STATIC mp_obj_t JsProxy_subscr(mp_obj_t self_in, mp_obj_t index, mp_obj_t value) {
+    JsProxy* self = MP_OBJ_TO_PTR(self_in);
+    JsRef jsindex = NULL;
+    JsRef jsvalue = NULL;
+    JsRef jsresult = NULL;
+
+    jsindex = python2js(index);
+    int type;
+    int error = 0;
+    if (value == MP_OBJ_NULL) {
+      type = SUBSCR_DELETE;
+    } else if (value == MP_OBJ_SENTINEL) {
+      // load
+      type = SUBSCR_LOAD;
+    } else {
+      jsvalue = python2js(value);
+      // store
+      type = SUBSCR_STORE;
+    }
+    jsresult = JsProxy_subscr_js(self->ref, jsindex, jsvalue, type, &error);
+    if(error == SUBSCR_KEY_ERROR) {
+      mp_raise_type_arg(&mp_type_KeyError, index);
+    }
+    if(error == SUBSCR_INDEX_ERROR) {
+      mp_raise_msg(&mp_type_IndexError,  MP_ERROR_TEXT("index out of range"));
+    }
+    if (error == SUBSCR_TYPE_ERROR) {
+      mp_raise_msg(&mp_type_TypeError,  MP_ERROR_TEXT("object isn't subscriptable"));
+    }
+    mp_obj_t pyresult = js2python(jsresult);
+    hiwire_CLEAR(jsindex);
+    hiwire_CLEAR(jsvalue);
+    hiwire_CLEAR(jsresult);
+    return pyresult;
+}
+
 // STATIC mp_obj_t JsMethod_construct(size_t n, const mp_obj_t *args, mp_map_t *kwargs) {
 //     JsRef ref = JsProxy_get_ref(args[0]);
 //     const char *arg1 = mp_obj_str_get_str(args[1]);
@@ -236,7 +348,8 @@ STATIC MP_DEFINE_CONST_OBJ_TYPE(
   print, JsProxy_print,
   call, JsMethod_call,
   attr, JsProxy_attr,
-  iter, JsProxy_GetIter
+  iter, JsProxy_GetIter,
+  subscr, JsProxy_subscr
 );
 // clang-format on
 

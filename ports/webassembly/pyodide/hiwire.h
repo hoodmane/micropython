@@ -13,6 +13,9 @@ typedef long ssize_t;
 #define false (!!0)
 #define true (!!1)
 
+#undef NULL
+#define NULL 0
+
 #define WARN_UNUSED __attribute__((warn_unused_result))
 
 /**
