@@ -26,7 +26,7 @@ function wrapPythonGlobals(globals_dict, builtins_dict) {
 }
 
 async function loadMicroPython(options) {
-  const { heapsize } = Object.assign({ heapsize: 64 * 1024 }, options);
+  const { heapsize } = Object.assign({ heapsize: 1024 * 1024 }, options);
   const Module = {};
   const moduleLoaded = new Promise((r) => (Module.postRun = r));
   _createMicropythonModule(Module);
