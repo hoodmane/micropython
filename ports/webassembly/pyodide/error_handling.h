@@ -13,7 +13,6 @@ typedef int errcode;
 // int
 // error_handling_init(PyObject* core_module);
 
-
 // If we are in the test suite, ensure that the current test fails.
 void
 fail_test();

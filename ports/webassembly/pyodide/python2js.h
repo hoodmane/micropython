@@ -3,8 +3,8 @@
 
 /** Translate Python objects to JavaScript.
  */
-#include "py/obj.h"
 #include "hiwire.h"
+#include "py/obj.h"
 
 /**
  * Do a shallow conversion from python to JavaScript. Convert immutable types

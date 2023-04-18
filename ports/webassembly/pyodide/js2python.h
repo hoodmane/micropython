@@ -4,8 +4,8 @@
 /**
  * Translate JavaScript objects to Python objects.
  */
-#include "py/obj.h"
 #include "hiwire.h"
+#include "py/obj.h"
 
 /**
  * Convert a JavaScript object to a Python object.

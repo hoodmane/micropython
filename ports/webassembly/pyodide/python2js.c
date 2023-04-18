@@ -10,9 +10,6 @@
 #include "py/objint.h"
 #include "py/objstr.h"
 
-
-
-
 static JsRef
 _python2js_unicode(mp_obj_t x);
 
@@ -46,11 +43,11 @@ _python2js_long(mp_obj_t x)
     mp_int_t val = MP_OBJ_SMALL_INT_VALUE(x);
     return hiwire_int(val);
   }
-  #define NUM_BYTES 20
-  unsigned char data[NUM_BYTES] = {0};
+#define NUM_BYTES 20
+  unsigned char data[NUM_BYTES] = { 0 };
   mp_obj_int_to_bytes_impl(x, false, NUM_BYTES, data);
-  return hiwire_int_from_digits((unsigned int*)data, NUM_BYTES/4);
-  #undef NUM_BYTES
+  return hiwire_int_from_digits((unsigned int*)data, NUM_BYTES / 4);
+#undef NUM_BYTES
 }
 
 static JsRef
@@ -72,7 +69,6 @@ _python2js_unicode(mp_obj_t x)
 // PyMapping_Check "returns 1 for Python classes with a __getitem__() method"
 // and PySequence_Check returns 1 for classes with a __getitem__ method that
 // don't subclass dict. For this reason, I think we should stick to subclasses.
-
 
 /**
  * if x is NULL, fail
@@ -96,7 +92,7 @@ _python2js_unicode(mp_obj_t x)
 static inline JsRef
 _python2js_immutable(mp_obj_t x)
 {
-  const mp_obj_type_t *type = mp_obj_get_type(x);
+  const mp_obj_type_t* type = mp_obj_get_type(x);
   if (x == mp_const_none) {
     return Js_undefined;
   } else if (x == mp_const_true) {
@@ -139,24 +135,27 @@ python2js_inner(mp_obj_t x, JsRef proxies, bool track_proxies)
   RETURN_IF_HAS_VALUE(_python2js_immutable(x));
   RETURN_IF_HAS_VALUE(_python2js_proxy(x));
   if (track_proxies && proxies == NULL) {
-    mp_raise_msg(&mp_type_TypeError, MP_ERROR_TEXT("No conversion known for x."));
+    mp_raise_msg(&mp_type_TypeError,
+                 MP_ERROR_TEXT("No conversion known for x."));
   }
   JsRef proxy = pyproxy_new(x);
   if (track_proxies) {
     JsArray_Push_unchecked(proxies, proxy);
   }
   return proxy;
-// finally:
-//   if (PyErr_Occurred()) {
-//     if (!PyErr_ExceptionMatches(conversion_error)) {
-//       _PyErr_FormatFromCause(conversion_error,
-//                              "Conversion from python to javascript failed");
-//     }
-//   } else {
-//     fail_test();
-//     PyErr_SetString(internal_error, "Internal error occurred in python2js");
-//   }
-//   return NULL;
+  // finally:
+  //   if (PyErr_Occurred()) {
+  //     if (!PyErr_ExceptionMatches(conversion_error)) {
+  //       _PyErr_FormatFromCause(conversion_error,
+  //                              "Conversion from python to javascript
+  //                              failed");
+  //     }
+  //   } else {
+  //     fail_test();
+  //     PyErr_SetString(internal_error, "Internal error occurred in
+  //     python2js");
+  //   }
+  //   return NULL;
 }
 
 /**
@@ -182,4 +181,3 @@ python2js(mp_obj_t x)
 {
   return python2js_inner(x, NULL, false);
 }
-

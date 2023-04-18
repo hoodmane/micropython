@@ -9,7 +9,6 @@
 #define ERROR_REF (0)
 #define ERROR_NUM (-1)
 
-
 EMSCRIPTEN_KEEPALIVE const JsRef Js_undefined = ((JsRef)(2));
 EMSCRIPTEN_KEEPALIVE const JsRef Js_true = ((JsRef)(4));
 EMSCRIPTEN_KEEPALIVE const JsRef Js_false = ((JsRef)(6));
@@ -38,7 +37,6 @@ EMSCRIPTEN_KEEPALIVE bool tracerefs = false;
   Hiwire.hiwire_attr = DEREF_U8(js_const, 0);                                  \
   _hiwire.objects.set(Hiwire.hiwire_attr, [ js_value, -1 ]);                   \
   _hiwire.obj_to_key.set(js_value, Hiwire.hiwire_attr);
-
 
 EM_JS_NUM(int, hiwire_init_js, (), {
   let _hiwire = {
@@ -287,7 +285,9 @@ EM_JS_NUM(int, hiwire_init_js, (), {
   return 0;
 });
 
-int hiwire_init(void) {
+int
+hiwire_init(void)
+{
   return hiwire_init_js();
 }
 
@@ -301,7 +301,8 @@ EM_JS(JsRef, hiwire_incref_js, (JsRef idval), {
 });
 
 JsRef
-hiwire_incref(JsRef idval) {
+hiwire_incref(JsRef idval)
+{
   return hiwire_incref_js(idval);
 }
 
@@ -339,7 +340,8 @@ hiwire_int_from_digits_js, (const unsigned int* digits, size_t ndigits), {
 // clang-format on
 
 JsRef
-hiwire_int_from_digits(const unsigned int* digits, size_t ndigits) {
+hiwire_int_from_digits(const unsigned int* digits, size_t ndigits)
+{
   return hiwire_int_from_digits_js(digits, ndigits);
 }
 
@@ -348,17 +350,25 @@ EM_JS_REF(JsRef, hiwire_double_js, (double val), {
 });
 
 JsRef
-hiwire_double(double val) {
+hiwire_double(double val)
+{
   return hiwire_double_js(val);
 }
 
-
-EM_JS_REF(JsRef, hiwire_string_utf8_len_js, (const unsigned char* ptr, size_t length), {
+// clang-format off
+EM_JS_REF(
+JsRef,
+hiwire_string_utf8_len_js,
+(const unsigned char* ptr, size_t length),
+{
   return Hiwire.new_value((new TextDecoder()).decode(HEAP8.subarray(ptr, ptr + length)));
 });
+// clang-format on
+
 
 JsRef
-hiwire_string_utf8_len(const unsigned char* ptr, size_t length) {
+hiwire_string_utf8_len(const unsigned char* ptr, size_t length)
+{
   return hiwire_string_utf8_len_js(ptr, length);
 }
 
@@ -367,7 +377,8 @@ EM_JS_REF(JsRef, hiwire_string_utf8_js, (const char* ptr), {
 });
 
 JsRef
-hiwire_string_utf8(const char* ptr) {
+hiwire_string_utf8(const char* ptr)
+{
   return hiwire_string_utf8_js(ptr);
 }
 
@@ -432,7 +443,8 @@ hiwire_call_bound_js,
 // clang-format on
 
 JsRef
-hiwire_call_bound(JsRef idfunc, JsRef idthis, JsRef idargs) {
+hiwire_call_bound(JsRef idfunc, JsRef idthis, JsRef idargs)
+{
   return hiwire_call_bound_js(idfunc, idthis, idargs);
 }
 
@@ -597,10 +609,13 @@ EM_JS_REF(char*, hiwire_get_length_string, (JsRef idobj), {
 //     return result;
 //   }
 //   // Something went wrong. Case work:
-//   // * -1: Either `val.size` or `val.length` was a getter which managed to raise
-//   //    an error. Rude. (Also we don't defend against this in hiwire_has_length)
+//   // * -1: Either `val.size` or `val.length` was a getter which managed to
+//   raise
+//   //    an error. Rude. (Also we don't defend against this in
+//   hiwire_has_length)
 //   // * -2: Doesn't have a length or size, or they aren't of type "number".
-//   //   But `hiwire_has_length` returned true? So it must have changed somehow.
+//   //   But `hiwire_has_length` returned true? So it must have changed
+//   somehow.
 //   // * -3: Length was >= 2^{31}
 //   // * -4: Length was negative
 //   if (result == -2) {
@@ -665,7 +680,8 @@ EM_JS_BOOL(bool, hiwire_is_function_js, (JsRef idobj), {
 });
 
 bool
-hiwire_is_function(JsRef idobj) {
+hiwire_is_function(JsRef idobj)
+{
   return hiwire_is_function_js(idobj);
 }
 
@@ -715,7 +731,8 @@ EM_JS_REF(JsRef, hiwire_to_string_js, (JsRef idobj), {
 });
 
 JsRef
-hiwire_to_string(JsRef idobj) {
+hiwire_to_string(JsRef idobj)
+{
   return hiwire_to_string_js(idobj);
 }
 
@@ -870,7 +887,8 @@ EM_JS_NUM(int, JsArray_Push_js, (JsRef idarr, JsRef idval), {
 });
 
 int
-JsArray_Push(JsRef idarr, JsRef idval) {
+JsArray_Push(JsRef idarr, JsRef idval)
+{
   return JsArray_Push_js(idarr, idval);
 }
 
@@ -881,7 +899,8 @@ EM_JS(int, JsArray_Push_unchecked_js, (JsRef idarr, JsRef idval), {
 });
 
 int
-JsArray_Push_unchecked(JsRef idarr, JsRef idval) {
+JsArray_Push_unchecked(JsRef idarr, JsRef idval)
+{
   return JsArray_Push_unchecked_js(idarr, idval);
 }
 
@@ -896,7 +915,9 @@ EM_JS_REF(JsRef, JsArray_Get_js, (JsRef idobj, int idx), {
   return Hiwire.new_value(result);
 });
 
-JsRef JsArray_Get(JsRef idobj, int idx) {
+JsRef
+JsArray_Get(JsRef idobj, int idx)
+{
   return JsArray_Get_js(idobj, idx);
 }
 
@@ -987,7 +1008,6 @@ JsObject_New(void) {
 
 // clang-format on
 
-
 EM_JS_REF(JsRef, JsObject_GetString_js, (JsRef idobj, const char* ptrkey), {
   let jsobj = Hiwire.get_value(idobj);
   let jskey = UTF8ToString(ptrkey);
@@ -998,7 +1018,8 @@ EM_JS_REF(JsRef, JsObject_GetString_js, (JsRef idobj, const char* ptrkey), {
 });
 
 JsRef
-JsObject_GetString(JsRef idobj, const char* ptrkey){
+JsObject_GetString(JsRef idobj, const char* ptrkey)
+{
   return JsObject_GetString_js(idobj, ptrkey);
 }
 
@@ -1015,18 +1036,26 @@ JsObject_SetString_js,
 // clang-format on
 
 errcode
-JsObject_SetString(JsRef idobj, const char* ptrkey, JsRef idval){
+JsObject_SetString(JsRef idobj, const char* ptrkey, JsRef idval)
+{
   return JsObject_SetString_js(idobj, ptrkey, idval);
 }
 
-EM_JS_NUM(errcode, JsObject_DeleteString_js, (JsRef idobj, const char* ptrkey), {
+// clang-format off
+EM_JS_NUM(
+errcode,
+JsObject_DeleteString_js,
+(JsRef idobj, const char* ptrkey),
+{
   let jsobj = Hiwire.get_value(idobj);
   let jskey = UTF8ToString(ptrkey);
   delete jsobj[jskey];
 });
+// clang-format on
 
 errcode
-JsObject_DeleteString(JsRef idobj, const char* ptrkey){
+JsObject_DeleteString(JsRef idobj, const char* ptrkey)
+{
   return JsObject_DeleteString_js(idobj, ptrkey);
 }
 

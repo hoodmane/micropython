@@ -1,11 +1,11 @@
 #ifndef HIWIRE_H
 #define HIWIRE_H
 #define PY_SSIZE_T_CLEAN
+#include "bits/alltypes.h"
 #include "stdalign.h"
 #include "stdbool.h"
 #include "stdint.h"
 #include <stdio.h>
-#include "bits/alltypes.h"
 typedef long ssize_t;
 
 #undef false

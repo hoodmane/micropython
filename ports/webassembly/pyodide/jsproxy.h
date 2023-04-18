@@ -11,6 +11,5 @@ JsProxy_new(JsRef ref);
 bool
 JsProxy_Check(mp_obj_t x);
 
-
 JsRef
 JsProxy_AsJs(mp_obj_t x);

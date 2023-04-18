@@ -2,16 +2,15 @@
 
 #include "error_handling.h"
 // #include "js2python.h"
-#include "py/runtime.h"
 #include "py/binary.h"
+#include "py/gc.h"
 #include "py/mperrno.h"
 #include "py/objint.h"
-#include "py/gc.h"
+#include "py/runtime.h"
 
 #include <emscripten.h>
 
 #include "jsmemops.h"
-
 
 EMSCRIPTEN_KEEPALIVE mp_obj_t
 _js2python_none()
@@ -54,7 +53,8 @@ EM_JS_REF(mp_obj_t, js2python_js, (JsRef id), {
 })
 
 mp_obj_t
-js2python(JsRef id) {
+js2python(JsRef id)
+{
   return js2python_js(id);
 }
 
@@ -63,6 +63,8 @@ js2python(JsRef id) {
 #include "include_js_file.h"
 #include "js2python.js"
 
-int js2python_init(void) {
+int
+js2python_init(void)
+{
   return js2python_init_js();
 }

@@ -10,17 +10,17 @@
 #include "python2js.h"
 
 #include "py/builtin.h"
-#include "py/runtime.h"
 #include "py/objtype.h"
+#include "py/runtime.h"
 
-#define HAS_LENGTH   (1 << 0)
-#define HAS_SUBSCR   (1 << 1)
+#define HAS_LENGTH (1 << 0)
+#define HAS_SUBSCR (1 << 1)
 #define HAS_CONTAINS (1 << 3)
-#define IS_ITERABLE  (1 << 4)
-#define IS_ITERATOR  (1 << 5)
+#define IS_ITERABLE (1 << 4)
+#define IS_ITERATOR (1 << 5)
 #define IS_AWAITABLE (1 << 6)
-#define IS_BUFFER    (1 << 7)
-#define IS_CALLABLE  (1 << 8)
+#define IS_BUFFER (1 << 7)
+#define IS_CALLABLE (1 << 8)
 #define IS_ASYNC_ITERABLE (1 << 9)
 #define IS_ASYNC_ITERATOR (1 << 10)
 #define IS_GENERATOR (1 << 11)
@@ -29,21 +29,19 @@
 #define Py_ENTER()
 #define Py_EXIT()
 
-
 // We stick objects in here so that the gc will know we need them still
 mp_obj_t proxy_dict;
 
 EMSCRIPTEN_KEEPALIVE int
 pyproxy_getflags(mp_obj_t pyobj)
 {
-  const mp_obj_type_t *type = mp_obj_get_type(pyobj);
+  const mp_obj_type_t* type = mp_obj_get_type(pyobj);
   int result = 0;
 
-  #define SET_FLAG_IF(flag, cond)                                                \
-    if (cond) {                                                                  \
-      result |= flag;                                                            \
-    }
-  
+#define SET_FLAG_IF(flag, cond)                                                \
+  if (cond) {                                                                  \
+    result |= flag;                                                            \
+  }
 
   SET_FLAG_IF(HAS_LENGTH, false);
   SET_FLAG_IF(HAS_SUBSCR, MP_OBJ_TYPE_GET_SLOT_OR_NULL(type, subscr) != NULL);
@@ -52,11 +50,9 @@ pyproxy_getflags(mp_obj_t pyobj)
   SET_FLAG_IF(IS_ITERABLE, false);
   SET_FLAG_IF(IS_ITERATOR, false);
 
-
-  #undef SET_FLAG_IF
+#undef SET_FLAG_IF
   return result;
 }
-
 
 // Use raw EM_JS for the next five commands. We intend to signal a fatal error
 // if a JavaScript error is thrown.
@@ -70,7 +66,8 @@ EM_JS(int, pyproxy_Check_js, (JsRef x), {
 });
 
 int
-pyproxy_Check(JsRef x) {
+pyproxy_Check(JsRef x)
+{
   return pyproxy_Check_js(x);
 }
 
@@ -97,7 +94,8 @@ EM_JS(void, destroy_proxies_js, (JsRef proxies_id, char* msg_ptr), {
 });
 
 void
-destroy_proxies(JsRef proxies_id, char* msg_ptr) {
+destroy_proxies(JsRef proxies_id, char* msg_ptr)
+{
   destroy_proxies_js(proxies_id, msg_ptr);
 }
 
@@ -113,7 +111,6 @@ EM_JS(void, destroy_proxy, (JsRef proxy_id, char* msg_ptr), {
   }
   Module.pyproxy_destroy(px, msg, false);
 });
-
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -178,17 +175,16 @@ EMSCRIPTEN_KEEPALIVE int
 _pyproxy_hasattr(mp_obj_t pyobj, JsRef jsattr)
 {
   mp_obj_t pyattr = js2python(jsattr);
-  if(pyattr == 0) {
+  if (pyattr == 0) {
     // TODO: Set error!
     return -1;
   }
-  
+
   qstr attr = mp_obj_str_get_qstr(pyattr);
   mp_obj_t dest[2];
   mp_load_method_protected(pyobj, attr, dest, false);
   return dest[0] != MP_OBJ_NULL;
 }
-
 
 EMSCRIPTEN_KEEPALIVE JsRef
 _pyproxy_getattr(mp_obj_t pyobj, JsRef idkey, JsRef proxyCache)
@@ -199,16 +195,18 @@ _pyproxy_getattr(mp_obj_t pyobj, JsRef idkey, JsRef proxyCache)
     // If it's a method, we use the descriptor pointer as the cache key rather
     // than the actual bound method. This allows us to reuse bound methods from
     // the cache.
-    // _PyObject_GetMethod will return true and store a descriptor into pydescr if
-    // the attribute we are looking up is a method, otherwise it will return false
-    // and set pydescr to the actual attribute (in particular, I believe that it
-    // will resolve other types of getter descriptors automatically).
+    // _PyObject_GetMethod will return true and store a descriptor into pydescr
+    // if the attribute we are looking up is a method, otherwise it will return
+    // false and set pydescr to the actual attribute (in particular, I believe
+    // that it will resolve other types of getter descriptors automatically).
     mp_obj_t pyresult = mp_load_attr(pyobj, mp_obj_str_get_qstr(pykey));
     JsRef result = python2js(pyresult);
     nlr_pop();
     return result;
   } else {
-    if (mp_obj_is_subclass_fast(MP_OBJ_FROM_PTR(((mp_obj_base_t *)nlr.ret_val)->type), MP_OBJ_FROM_PTR(&mp_type_AttributeError))) {
+    if (mp_obj_is_subclass_fast(
+          MP_OBJ_FROM_PTR(((mp_obj_base_t*)nlr.ret_val)->type),
+          MP_OBJ_FROM_PTR(&mp_type_AttributeError))) {
       // Suppress KeyError and return undefined.
       return Js_undefined;
     }
@@ -216,7 +214,6 @@ _pyproxy_getattr(mp_obj_t pyobj, JsRef idkey, JsRef proxyCache)
     return NULL;
   }
 }
-
 
 EMSCRIPTEN_KEEPALIVE void
 _pyproxy_setattr(mp_obj_t pyobj, JsRef jsattr, JsRef jsval)
@@ -253,15 +250,18 @@ _pyproxy_getitem(mp_obj_t pyobj, JsRef idkey)
   nlr_buf_t nlr;
   if (nlr_push(&nlr) == 0) {
     mp_obj_t pykey = js2python(idkey);
-    mp_obj_t pyresult = mp_call_function_2((mp_obj_t*)&mp_op_getitem_obj, pyobj, pykey);
+    mp_obj_t pyresult =
+      mp_call_function_2((mp_obj_t*)&mp_op_getitem_obj, pyobj, pykey);
     JsRef result = python2js(pyresult);
     nlr_pop();
     return result;
   } else {
-    if (mp_obj_is_subclass_fast(MP_OBJ_FROM_PTR(((mp_obj_base_t *)nlr.ret_val)->type), MP_OBJ_FROM_PTR(&mp_type_KeyError))) {
+    if (mp_obj_is_subclass_fast(
+          MP_OBJ_FROM_PTR(((mp_obj_base_t*)nlr.ret_val)->type),
+          MP_OBJ_FROM_PTR(&mp_type_KeyError))) {
       // Suppress KeyError and return undefined.
       return Js_undefined;
-    } 
+    }
     record_traceback(nlr.ret_val);
     return NULL;
   }
@@ -275,7 +275,10 @@ _pyproxy_setitem(mp_obj_t pyobj, JsRef idkey, JsRef idval)
 
     mp_obj_t pykey = js2python(idkey);
     mp_obj_t pyval = js2python(idval);
-    mp_call_function_n_kw((mp_obj_t*)&mp_op_setitem_obj, 3, 0, (const mp_obj_t[3]){pyobj, pykey, pyval});
+    mp_call_function_n_kw((mp_obj_t*)&mp_op_setitem_obj,
+                          3,
+                          0,
+                          (const mp_obj_t[3]){ pyobj, pykey, pyval });
     nlr_pop();
   } else {
     record_traceback(nlr.ret_val);
@@ -301,7 +304,9 @@ _pyproxy_contains(mp_obj_t pyobj, JsRef idkey)
   nlr_buf_t nlr;
   if (nlr_push(&nlr) == 0) {
     mp_obj_t pykey = js2python(idkey);
-    int result = mp_call_function_2((mp_obj_t*)&mp_op_contains_obj, pyobj, pykey) == mp_const_true;
+    int result =
+      mp_call_function_2((mp_obj_t*)&mp_op_contains_obj, pyobj, pykey) ==
+      mp_const_true;
     nlr_pop();
     return result;
   } else {
@@ -313,11 +318,12 @@ _pyproxy_contains(mp_obj_t pyobj, JsRef idkey)
 EMSCRIPTEN_KEEPALIVE JsRef
 _pyproxy_ownKeys(mp_obj_t pyobj)
 {
-  mp_obj_list_t * pydir = NULL;
+  mp_obj_list_t* pydir = NULL;
   JsRef iddir = NULL;
   JsRef identry = NULL;
 
-  pydir = (mp_obj_list_t*)mp_call_function_1((mp_obj_t*)&mp_builtin_dir_obj, pyobj);
+  pydir =
+    (mp_obj_list_t*)mp_call_function_1((mp_obj_t*)&mp_builtin_dir_obj, pyobj);
 
   iddir = JsArray_New();
   for (int i = 0; i < pydir->len; ++i) {
@@ -366,7 +372,7 @@ _pyproxy_apply(mp_obj_t callable,
   JsRef jsitem = NULL;
   nlr_buf_t nlr;
   if (nlr_push(&nlr) == 0) {
-    size_t total_args = numposargs + 2*numkwargs;
+    size_t total_args = numposargs + 2 * numkwargs;
     mp_obj_t pyargs[total_args];
     // Put both arguments and keyword arguments into pyargs
     for (int i = 0; i < total_args; ++i) {
@@ -376,7 +382,8 @@ _pyproxy_apply(mp_obj_t callable,
       pyargs[i] = pyitem;
       hiwire_CLEAR(jsitem);
     }
-    mp_obj_t pyresult = mp_call_function_n_kw(callable, numposargs, numkwargs, pyargs);
+    mp_obj_t pyresult =
+      mp_call_function_n_kw(callable, numposargs, numkwargs, pyargs);
     JsRef idresult = python2js(pyresult);
     nlr_pop();
     return idresult;
@@ -544,7 +551,8 @@ _pyproxy_apply(mp_obj_t callable,
 //   JsRef jsresult = NULL;
 
 //   pyresult =
-//     _PyObject_CallMethodIdOneArg(receiver, &PyId_athrow, PyExc_GeneratorExit);
+//     _PyObject_CallMethodIdOneArg(receiver, &PyId_athrow,
+//     PyExc_GeneratorExit);
 //   FAIL_IF_NULL(pyresult);
 
 //   jsresult = python2js(pyresult);
@@ -597,7 +605,8 @@ _pyproxy_apply(mp_obj_t callable,
 //   t = Py_TYPE(aiterator);
 //   if (t->tp_as_async == NULL || t->tp_as_async->am_anext == NULL) {
 //     PyErr_Format(
-//       PyExc_TypeError, "'%.200s' object is not an async iterator", t->tp_name);
+//       PyExc_TypeError, "'%.200s' object is not an async iterator",
+//       t->tp_name);
 //     return NULL;
 //   }
 
@@ -614,17 +623,20 @@ _pyproxy_apply(mp_obj_t callable,
 // //
 // // Await / "then" Implementation
 // //
-// // We want convert the object to a future with `ensure_future` and then make a
+// // We want convert the object to a future with `ensure_future` and then make
+// a
 // // promise that resolves when the future does. We can add a callback to the
 // // future with future.add_done_callback but we need to make a little python
 // // closure "FutureDoneCallback" that remembers how to resolve the promise.
 // //
-// // From JavaScript we will use the single function _pyproxy_ensure_future, the
+// // From JavaScript we will use the single function _pyproxy_ensure_future,
+// the
 // // rest of this segment is helper functions for _pyproxy_ensure_future. The
 // // FutureDoneCallback object is never exposed to the user.
 
 // /**
-//  * A simple Callable python object. Intended to be called with a single argument
+//  * A simple Callable python object. Intended to be called with a single
+//  argument
 //  * which is the future that was resolved.
 //  */
 // // clang-format off
@@ -672,10 +684,9 @@ _pyproxy_apply(mp_obj_t callable,
 //   bool success = false;
 //   JsRef excval = NULL;
 //   JsRef result = NULL;
-//   // wrap_exception looks up the current exception and wraps it in a Js error.
-//   excval = wrap_exception();
-//   FAIL_IF_NULL(excval);
-//   result = hiwire_call_OneArg(self->reject_handle, excval);
+//   // wrap_exception looks up the current exception and wraps it in a Js
+//   error. excval = wrap_exception(); FAIL_IF_NULL(excval); result =
+//   hiwire_call_OneArg(self->reject_handle, excval);
 
 //   success = true;
 // finally:
@@ -716,12 +727,11 @@ _pyproxy_apply(mp_obj_t callable,
 // // clang-format off
 // static PyTypeObject FutureDoneCallbackType = {
 //     .tp_name = "FutureDoneCallback",
-//     .tp_doc = "Callback for internal use to allow awaiting a future from javascript",
-//     .tp_basicsize = sizeof(FutureDoneCallback),
-//     .tp_itemsize = 0,
-//     .tp_flags = Py_TPFLAGS_DEFAULT,
-//     .tp_dealloc = (destructor) FutureDoneCallback_dealloc,
-//     .tp_call = (ternaryfunc) FutureDoneCallback_call,
+//     .tp_doc = "Callback for internal use to allow awaiting a future from
+//     javascript", .tp_basicsize = sizeof(FutureDoneCallback), .tp_itemsize =
+//     0, .tp_flags = Py_TPFLAGS_DEFAULT, .tp_dealloc = (destructor)
+//     FutureDoneCallback_dealloc, .tp_call = (ternaryfunc)
+//     FutureDoneCallback_call,
 // };
 // // clang-format on
 
@@ -755,10 +765,9 @@ _pyproxy_apply(mp_obj_t callable,
 //   mp_obj_t future = NULL;
 //   mp_obj_t callback = NULL;
 //   mp_obj_t retval = NULL;
-//   future = _PyObject_CallMethodIdOneArg(asyncio, &PyId_ensure_future, pyobject);
-//   FAIL_IF_NULL(future);
-//   callback = FutureDoneCallback_cnew(resolve_handle, reject_handle);
-//   retval =
+//   future = _PyObject_CallMethodIdOneArg(asyncio, &PyId_ensure_future,
+//   pyobject); FAIL_IF_NULL(future); callback =
+//   FutureDoneCallback_cnew(resolve_handle, reject_handle); retval =
 //     _PyObject_CallMethodIdOneArg(future, &PyId_add_done_callback, callback);
 //   FAIL_IF_NULL(retval);
 
@@ -814,7 +823,8 @@ _pyproxy_apply(mp_obj_t callable,
 // /**
 //  * This is the C part of the getBuffer method.
 //  *
-//  * We use PyObject_GetBuffer to acquire a Py_buffer view to the object, then we
+//  * We use PyObject_GetBuffer to acquire a Py_buffer view to the object, then
+//  we
 //  * determine the locations of: the first element of the buffer, the earliest
 //  * element of the buffer in memory the latest element of the buffer in memory
 //  * (plus one itemsize).
@@ -822,23 +832,29 @@ _pyproxy_apply(mp_obj_t callable,
 //  * We will use this information to slice out a subarray of the wasm heap that
 //  * contains all the memory inside of the buffer.
 //  *
-//  * Special care must be taken for negative strides, this is why we need to keep
+//  * Special care must be taken for negative strides, this is why we need to
+//  keep
 //  * track separately of start_ptr (the location of the first element of the
-//  * array) and smallest_ptr (the location of the earliest element of the array in
-//  * memory). If strides are positive, these are the same but if some strides are
+//  * array) and smallest_ptr (the location of the earliest element of the array
+//  in
+//  * memory). If strides are positive, these are the same but if some strides
+//  are
 //  * negative they will be different.
 //  *
-//  * We also put the various other metadata about the buffer that we want to share
+//  * We also put the various other metadata about the buffer that we want to
+//  share
 //  * into buffer_struct.
 //  */
 // int
 // _pyproxy_get_buffer(buffer_struct* target, mp_obj_t ptrobj)
 // {
 //   Py_buffer view;
-//   // PyBUF_RECORDS_RO requires that suboffsets be NULL but otherwise is the most
+//   // PyBUF_RECORDS_RO requires that suboffsets be NULL but otherwise is the
+//   most
 //   // permissive possible request.
 //   if (PyObject_GetBuffer(ptrobj, &view, PyBUF_RECORDS_RO) == -1) {
-//     // Buffer cannot be represented without suboffsets. The bf_getbuffer method
+//     // Buffer cannot be represented without suboffsets. The bf_getbuffer
+//     method
 //     // should have set a PyExc_BufferError saying something to this effect.
 //     return -1;
 //   }
@@ -851,7 +867,8 @@ _pyproxy_apply(mp_obj_t callable,
 //   result.itemsize = view.itemsize;
 
 //   if (view.ndim == 0) {
-//     // "If ndim is 0, buf points to a single item representing a scalar. In this
+//     // "If ndim is 0, buf points to a single item representing a scalar. In
+//     this
 //     // case, shape, strides and suboffsets MUST be NULL."
 //     // https://docs.python.org/3/c-api/buffer.html#c.Py_buffer.ndim
 //     result.largest_ptr += view.itemsize;
@@ -877,8 +894,8 @@ _pyproxy_apply(mp_obj_t callable,
 //   }
 
 //   if (view.len != 0) {
-//     // Have to be careful to ensure that we handle negative strides correctly.
-//     for (int i = 0; i < view.ndim; i++) {
+//     // Have to be careful to ensure that we handle negative strides
+//     correctly. for (int i = 0; i < view.ndim; i++) {
 //       // view.strides[i] != 0
 //       if (view.strides[i] > 0) {
 //         // add positive strides to largest_ptr
@@ -909,7 +926,8 @@ _pyproxy_apply(mp_obj_t callable,
 //           (PyObject * ptrobj, bool capture_this, bool roundtrip),
 //           {
 //             return Hiwire.new_value(Module.pyproxy_new(ptrobj, {
-//               props : { captureThis : !!capture_this, roundtrip : !!roundtrip }
+//               props : { captureThis : !!capture_this, roundtrip : !!roundtrip
+//               }
 //             }));
 //           });
 
@@ -918,20 +936,21 @@ EM_JS_REF(JsRef, pyproxy_new_js, (mp_obj_t * ptrobj), {
 });
 
 JsRef
-pyproxy_new(mp_obj_t obj) {
+pyproxy_new(mp_obj_t obj)
+{
   nlr_buf_t nlr;
   if (nlr_push(&nlr) == 0) {
     mp_int_t refcnt = 0;
-    mp_map_t *proxy_dict_map = mp_obj_dict_get_map(proxy_dict);
+    mp_map_t* proxy_dict_map = mp_obj_dict_get_map(proxy_dict);
     mp_obj_t objkey = mp_obj_new_int((size_t)obj);
-    mp_map_elem_t *elem = mp_map_lookup(proxy_dict_map, objkey, MP_MAP_LOOKUP);
-    if(elem != NULL){
-      size_t len; 
-      mp_obj_t *items;
+    mp_map_elem_t* elem = mp_map_lookup(proxy_dict_map, objkey, MP_MAP_LOOKUP);
+    if (elem != NULL) {
+      size_t len;
+      mp_obj_t* items;
       mp_obj_tuple_get(elem->value, &len, &items);
       refcnt = MP_OBJ_SMALL_INT_VALUE(items[1]);
     }
-    refcnt ++;
+    refcnt++;
     mp_obj_t tuple[2];
     tuple[0] = obj;
     tuple[1] = mp_obj_new_int(refcnt);
@@ -948,20 +967,21 @@ pyproxy_new(mp_obj_t obj) {
 }
 
 EMSCRIPTEN_KEEPALIVE void
-pyproxy_decref(mp_obj_t obj) {
+pyproxy_decref(mp_obj_t obj)
+{
   nlr_buf_t nlr;
   if (nlr_push(&nlr) == 0) {
-    mp_map_t *proxy_dict_map = mp_obj_dict_get_map(proxy_dict);
+    mp_map_t* proxy_dict_map = mp_obj_dict_get_map(proxy_dict);
     mp_obj_t objkey = mp_obj_new_int((size_t)obj);
-    mp_map_elem_t *elem = mp_map_lookup(proxy_dict_map, objkey, MP_MAP_LOOKUP);
-    if(elem == NULL){
+    mp_map_elem_t* elem = mp_map_lookup(proxy_dict_map, objkey, MP_MAP_LOOKUP);
+    if (elem == NULL) {
       // Internal error...
       printf("Internal error...");
       return;
     }
     mp_int_t refcnt = MP_OBJ_SMALL_INT_VALUE(elem->value);
-    refcnt --;
-    if(refcnt == 0) {
+    refcnt--;
+    if (refcnt == 0) {
       mp_obj_dict_delete(objkey, obj);
       return;
     }
@@ -980,7 +1000,8 @@ pyproxy_decref(mp_obj_t obj) {
 // /**
 //  * Create a JsRef which can be called once, wrapping a Python callable. The
 //  * JsRef owns a reference to the Python callable until it is called, then
-//  * releases it. Useful for the "finally" wrapper on a JsProxy of a promise, and
+//  * releases it. Useful for the "finally" wrapper on a JsProxy of a promise,
+//  and
 //  * also exposed in the pyodide Python module.
 //  */
 // EM_JS_REF(JsRef, create_once_callable, (PyObject * obj), {
@@ -1026,20 +1047,24 @@ pyproxy_decref(mp_obj_t obj) {
 //  *  handle_result -- Python callable expecting one argument, called with the
 //  *  result if the promise is resolved. Can be NULL.
 //  *
-//  *  handle_exception -- Python callable expecting one argument, called with the
+//  *  handle_exception -- Python callable expecting one argument, called with
+//  the
 //  *  exception if the promise is rejected. Can be NULL.
 //  *
-//  *  done_callback_id -- A JsRef to a JavaScript callback to be called when the
+//  *  done_callback_id -- A JsRef to a JavaScript callback to be called when
+//  the
 //  *  promise is either resolved or rejected. Can be NULL.
 //  *
 //  * Returns: a JsRef to a pair [onResolved, onRejected].
 //  *
 //  * The purpose of this function is to handle memory management when attaching
 //  * Python functions to Promises. This function stores a reference to both
-//  * handle_result and handle_exception, and frees both when either onResolved or
+//  * handle_result and handle_exception, and frees both when either onResolved
+//  or
 //  * onRejected is called. Of course if the Promise never resolves then the
 //  * handles will be leaked. We can't use create_once_callable because either
-//  * onResolved or onRejected is called but not both. In either case, we release
+//  * onResolved or onRejected is called but not both. In either case, we
+//  release
 //  * both functions.
 //  *
 //  * The return values are intended to be attached to a promise e.g.,
@@ -1048,7 +1073,8 @@ pyproxy_decref(mp_obj_t obj) {
 // EM_JS_REF(JsRef, create_promise_handles, (
 //   mp_obj_t handle_result, mp_obj_t handle_exception, JsRef done_callback_id
 // ), {
-//   // At some point it would be nice to use FinalizationRegistry with these, but
+//   // At some point it would be nice to use FinalizationRegistry with these,
+//   but
 //   // it's a bit tricky.
 //   if (handle_result) {
 //     _Py_IncRef(handle_result);
@@ -1112,12 +1138,10 @@ pyproxy_decref(mp_obj_t obj) {
 //              Py_ssize_t nargs,
 //              mp_obj_t kwnames)
 // {
-//   static const char* const _keywords[] = { "", "capture_this", "roundtrip", 0 };
-//   bool capture_this = false;
-//   bool roundtrip = true;
-//   mp_obj_t obj;
-//   static struct _PyArg_Parser _parser = { "O|$pp:create_proxy", _keywords, 0 };
-//   if (!_PyArg_ParseStackAndKeywords(
+//   static const char* const _keywords[] = { "", "capture_this", "roundtrip", 0
+//   }; bool capture_this = false; bool roundtrip = true; mp_obj_t obj; static
+//   struct _PyArg_Parser _parser = { "O|$pp:create_proxy", _keywords, 0 }; if
+//   (!_PyArg_ParseStackAndKeywords(
 //         args, nargs, kwnames, &_parser, &obj, &capture_this, &roundtrip)) {
 //     return NULL;
 //   }
@@ -1172,12 +1196,12 @@ pyproxy_decref(mp_obj_t obj) {
 //   return success ? 0 : -1;
 // }
 
-
 #include "include_js_file.h"
 #include "pyproxy.js"
 
-
-int pyproxy_init(void) {
+int
+pyproxy_init(void)
+{
   proxy_dict = mp_obj_new_dict(0);
   return pyproxy_init_js();
 }
