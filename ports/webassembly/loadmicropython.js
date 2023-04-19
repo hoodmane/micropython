@@ -128,6 +128,7 @@ async function loadMicroPython(options) {
   function registerJsModule(name, mod) {
     register_js_module(name, mod);
   }
+  const {setStdin, setStdout, setStderr} = API;
   const public_api = {
     _module: Module,
     FS: Module.FS,
@@ -135,6 +136,9 @@ async function loadMicroPython(options) {
     pyimport,
     globals,
     registerJsModule,
+    setStdin, 
+    setStdout, 
+    setStderr
   };
   registerJsModule("js", globalThis);
   registerJsModule("pyodide_js", public_api);

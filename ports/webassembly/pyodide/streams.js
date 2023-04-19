@@ -189,6 +189,7 @@ function setStdin(options) {
   }
   setDefaultStdin();
 }
+API.setStdin = setStdin;
 
 /**
  * If in node, sets stdout to write directly to process.stdout and sets isatty(stdout)
@@ -252,6 +253,7 @@ function setStdout(options) {
   }
   setDefaultStdout();
 }
+API.setStdout = setStdout;
 
 /**
  * If in node, sets stderr to write directly to process.stderr and sets isatty(stderr)
@@ -316,6 +318,8 @@ function setStderr(options) {
   }
   setDefaultStderr();
 }
+API.setStderr = setStderr;
+
 
 function make_get_char(infunc, autoEOF) {
   var index = 0;
