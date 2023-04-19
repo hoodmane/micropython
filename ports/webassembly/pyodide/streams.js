@@ -396,7 +396,11 @@ function make_batched_put_char(out) {
     // c.) null to signal an EOF,
     put_char: function (tty, val) {
       if (val === null || val === 10 /* charCode('\n') */) {
-        out(textdecoder.decode(new Uint8Array(output)));
+        let end;
+        if(output[output.length - 1] == 13 /* charCode('\r') */) {
+            end = -1;
+        }
+        out(textdecoder.decode((new Uint8Array(output)).subarray(0, end)));
         output = [];
       } else {
         if (val !== 0) {
