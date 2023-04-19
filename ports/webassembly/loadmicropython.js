@@ -138,7 +138,8 @@ async function loadMicroPython(options) {
     registerJsModule,
     setStdin, 
     setStdout, 
-    setStderr
+    setStderr,
+    registerComlink(comlink) {},
   };
   registerJsModule("js", globalThis);
   registerJsModule("pyodide_js", public_api);
