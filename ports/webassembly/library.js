@@ -31,7 +31,7 @@ mergeInto(LibraryManager.library, {
   },
 
   mp_js_hook: function () {
-    if (typeof window === "undefined") {
+    if (typeof process !== "undefined" && process.versions.node !== "undefined") {
       var mp_interrupt_char = Module.ccall(
         "mp_hal_get_interrupt_char",
         "number",
