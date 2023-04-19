@@ -68,11 +68,12 @@ JSFLAGS += --js-library library.js
 JSFLAGS += -s MODULARIZE -s EXPORT_NAME=_createMicropythonModule
 JSFLAGS += --pre-js pyodide/pre.js 
 JSFLAGS += --pre-js pyodide/error_handling.js
+JSFLAGS += --pre-js pyodide/streams.js
 JSFLAGS += --pre-js $(BUILD)/pylib.js
 
 all: $(BUILD)/micropython.js
 
-$(BUILD)/micropython.js: $(OBJ) library.js loadmicropython.js pyodide/pre.js pyodide/error_handling.js $(BUILD)/pylib.js
+$(BUILD)/micropython.js: $(OBJ) library.js loadmicropython.js pyodide/*.js $(BUILD)/pylib.js
 	echo $(OBJ)
 	$(ECHO) "LINK $(BUILD)/micropython.js"
 	$(Q)emcc $(LDFLAGS) -o $(BUILD)/micropython.js $(OBJ) $(JSFLAGS)

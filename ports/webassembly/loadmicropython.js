@@ -61,8 +61,7 @@ async function loadMicroPython(options) {
     }
     return fileName.slice(0, indexOfLastSlash + 1);
   }
-
-  let { heapsize, indexURL } = Object.assign(
+  let { heapsize, indexURL, stdin, stdout, stderr } = Object.assign(
     { heapsize: 1024 * 1024 },
     options
   );
@@ -79,13 +78,16 @@ async function loadMicroPython(options) {
     throw new Error("Didn't expect to load any more file_packager files!");
   };
   Module._mp_js_init(heapsize);
+  const API = Module.API;
   function bootstrap_pyimport(name) {
     const nameid = Module.hiwire.new_value(name);
     const proxy_id = Module._pyimport(nameid);
     Module.hiwire.decref(nameid);
-    Module.API.throw_if_error();
+    API.throw_if_error();
     return Module.hiwire.pop_value(proxy_id);
   }
+
+  API.initializeStreams(stdin, stdout, stderr);
 
   const main = bootstrap_pyimport("__main__");
   const main_dict = main.__dict__;
