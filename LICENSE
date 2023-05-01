@@ -78,6 +78,9 @@ used during the build process and is not part of the compiled source code.
             /usbhost (MCD-ST Liberty SW License Agreement V2)
         /teensy
             /core (PJRC.COM)
+        /webassembly
+            /pyodide (MPL-2.0)
+            /lib/pyodide (MPL-2.0)
         /zephyr
             /src (Apache-2.0)
     /tools
